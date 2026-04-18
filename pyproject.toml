@@ -1,0 +1,12 @@
+[project]
+name = "sur"
+version = "0.1.0"
+description = "person-verification detector"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.11",
+    "ty>=0.0.31",
+]

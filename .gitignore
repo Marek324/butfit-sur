@@ -1,0 +1,23 @@
+# Claude / editors
+CLAUDE.md
+.cursor/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Tooling caches
+.ruff_cache/
+.pytest_cache/
+
+# Secrets
+.env
+
+# Course data (downloadable via scripts/download_dataset.py)
+dataset/
+
+# Submission artifact
+submit.zip
+

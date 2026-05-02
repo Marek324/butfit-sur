@@ -21,3 +21,9 @@ dataset/
 # Submission artifact
 submit.zip
 
+# Trained models / cached features
+artifacts/
+
+# VAD comparison outputs (curiosity, not for submission)
+scripts/vad_compare/*.json
+

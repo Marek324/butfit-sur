@@ -1,11 +1,13 @@
 """Audio augmentations chosen to be invariant under speaker identity.
 
-Safe transforms only: time stretch (pitch-preserving), gain, polarity, random
-crop, peaking EQ. Each leaves the (log F0, jitter, shimmer, voicing ratio,
-CMVN-MFCC means) feature vector approximately unchanged in expectation.
+Transforms: time stretch (pitch-preserving), gain, polarity, random crop,
+peaking EQ, additive white Gaussian noise at a sampled SNR. None of these
+shifts the expected (log F0, jitter, shimmer, voicing ratio, CMVN-MFCC means)
+feature vector — noise adds variance, not bias, so the model sees a wider
+distribution at test time without being misled about the target.
 
-Pitch shift, reverb, low-SNR noise, and SpecAugment-style masking are
-DELIBERATELY NOT IMPLEMENTED — they would change speaker-defining features.
+Pitch shift, reverb, and SpecAugment-style masking are DELIBERATELY NOT
+IMPLEMENTED — they would change speaker-defining features.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ import librosa
 import numpy as np
 from scipy.signal import lfilter
 
-from config import FeatureSpaceAugCfg, WaveformAugCfg
+from config import WaveformAugCfg
 
 
 def augment_waveform(
@@ -45,10 +47,19 @@ def augment_waveform(
 
     g_db = float(rng.uniform(*cfg.gain_db_range))
     x = x * float(10 ** (g_db / 20))
+
+    snr_lo, snr_hi = cfg.noise_snr_db_range
+    snr_db = float(rng.uniform(snr_lo, snr_hi))
+    signal_rms = float(np.sqrt(np.mean(x.astype(np.float64) ** 2)))
+    if signal_rms > 1e-10:
+        noise_rms = signal_rms / (10.0 ** (snr_db / 20.0))
+        x = x + (noise_rms * rng.standard_normal(len(x))).astype(np.float32)
     return x.astype(np.float32)
 
 
-def _peaking_eq(x: np.ndarray, sr: int, f0_hz: float, gain_db: float, q: float) -> np.ndarray:
+def _peaking_eq(
+    x: np.ndarray, sr: int, f0_hz: float, gain_db: float, q: float
+) -> np.ndarray:
     """RBJ Audio EQ Cookbook peaking biquad."""
     A = 10 ** (gain_db / 40)
     omega = 2 * np.pi * f0_hz / sr
@@ -63,35 +74,3 @@ def _peaking_eq(x: np.ndarray, sr: int, f0_hz: float, gain_db: float, q: float) 
     b = np.array([b0, b1, b2]) / a0
     a = np.array([1.0, a1 / a0, a2 / a0])
     return lfilter(b, a, x).astype(np.float32)
-
-
-def augment_features(
-    v: np.ndarray, sigmas: np.ndarray, cfg: FeatureSpaceAugCfg, rng: np.random.Generator
-) -> np.ndarray:
-    """Per-dim Gaussian noise. sigmas: (D,) within-speaker std estimate."""
-    if not cfg.enabled:
-        return v
-    noise = rng.standard_normal(v.shape).astype(v.dtype)
-    return v + (cfg.sigma_multiplier * sigmas).astype(v.dtype) * noise
-
-
-def estimate_within_speaker_sigmas(
-    features: np.ndarray, speaker_ids: list[str | None]
-) -> np.ndarray:
-    """Mean over speakers of per-speaker std (per dim).
-
-    features: (N, D). speaker_ids: length N; speakers with <2 utterances are skipped.
-    Falls back to global std if no speaker has ≥2 utterances.
-    """
-    by_speaker: dict[str, list[np.ndarray]] = {}
-    for f, spk in zip(features, speaker_ids, strict=True):
-        if spk is None:
-            continue
-        by_speaker.setdefault(spk, []).append(f)
-    stds: list[np.ndarray] = []
-    for vs in by_speaker.values():
-        if len(vs) >= 2:
-            stds.append(np.stack(vs).std(axis=0))
-    if not stds:
-        return features.std(axis=0)
-    return np.mean(np.stack(stds), axis=0)

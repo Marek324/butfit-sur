@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
-"""Evaluate a trained audio classifier.
+"""Evaluate a trained classifier (audio | image | fusion).
 
-  # Dev metrics
+  # Dev metrics for any modality
   uv run scripts/evaluate.py --config configs/audio_baseline.toml --split dev
 
-  # Score an unlabeled directory (eval set on May 3rd) and emit result file
-  uv run scripts/evaluate.py --config configs/audio_baseline.toml --input dataset/eval
+  # Score the eval set declared by `data.eval_dirs` in the config and emit the
+  # submission result file
+  uv run scripts/evaluate.py --config configs/audio_baseline.toml --split eval
+
+  # Score an arbitrary unlabeled directory (overrides eval_dirs)
+  uv run scripts/evaluate.py --config configs/audio_baseline.toml --input some/dir
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
-import time
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parent.parent / "src"
@@ -20,32 +23,118 @@ sys.path.insert(0, str(SRC))
 
 import numpy as np  # noqa: E402
 
-from audio_features import extract  # noqa: E402
-from classifier import load, score  # noqa: E402
+from classifier import load as load_classifier  # noqa: E402
 from config import Config, load_config  # noqa: E402
-from data import enumerate_split, load_wav_mono16k  # noqa: E402
+from data import enumerate_paired, enumerate_split  # noqa: E402
 from eval import evaluate, format_metrics  # noqa: E402
+from experiments import extract_set, score_unlabeled  # noqa: E402
+from fusion import load as load_fusion, score_fusion  # noqa: E402
 from score import write_result_file  # noqa: E402
 
 
-def extract_set(
-    cfg: Config, dirs: list[Path], require_label: bool
-) -> tuple[np.ndarray, np.ndarray, list[str]]:
-    samples = enumerate_split(dirs, extension=".wav", label_required=require_label)
-    print(f"  enumerated {len(samples)} samples")
-    X: list[np.ndarray] = []
-    y: list[int] = []
-    names: list[str] = []
-    t0 = time.time()
-    for i, s in enumerate(samples):
-        x, sr = load_wav_mono16k(s.path)
-        v = extract(x, sr, cfg.audio.vad, cfg.audio.features)
-        X.append(v)
-        y.append(s.label if s.label is not None else -1)
-        names.append(s.name)
-        if (i + 1) % 25 == 0 or i == len(samples) - 1:
-            print(f"  extract: {i + 1}/{len(samples)}  ({time.time() - t0:.1f}s)")
-    return np.stack(X), np.asarray(y), names
+def _modality_extension(modality: str) -> str:
+    return ".wav" if modality == "audio" else ".png"
+
+
+def _load_artifact_config(d: Path) -> Config:
+    return load_config(d / "config.toml")
+
+
+def _resolve_unlabeled_dirs(cfg: Config, args: argparse.Namespace) -> list[Path]:
+    if args.input is not None:
+        return [args.input]
+    if not cfg.data.eval_dirs:
+        raise SystemExit(
+            "no eval dirs available: set data.eval_dirs in the config or pass --input DIR"
+        )
+    return list(cfg.data.eval_dirs)
+
+
+def evaluate_unimodal(cfg: Config, args: argparse.Namespace, modality: str) -> None:
+    model = load_classifier(args.artifacts / cfg.name / "model.pkl")
+    ext = _modality_extension(modality)
+
+    if args.split == "dev":
+        samples = enumerate_split(cfg.data.dev_dirs, extension=ext)
+        scores, _names = score_unlabeled(cfg, model, samples, modality)
+        y = np.asarray([s.label for s in samples])
+        m = evaluate(scores, y, threshold=cfg.output.hard_threshold_logit)
+        print()
+        print(format_metrics(m))
+        _print_score_distribution(scores, y)
+        return
+
+    dirs = _resolve_unlabeled_dirs(cfg, args)
+    samples = enumerate_split(dirs, extension=ext, label_required=False)
+    scores, names = score_unlabeled(cfg, model, samples, modality)
+    out = args.results_dir / cfg.output.result_filename
+    write_result_file(names, scores, cfg.output.hard_threshold_logit, out)
+    n_pos = int((scores >= cfg.output.hard_threshold_logit).sum())
+    print(f"Wrote {out}: {len(names)} segments  ({n_pos} predicted target)")
+
+
+def evaluate_fusion(cfg: Config, args: argparse.Namespace) -> None:
+    fmodel = load_fusion(args.artifacts / cfg.name / "model.pkl")
+    audio_dir = args.artifacts / cfg.fusion.audio_artifact
+    image_dir = args.artifacts / cfg.fusion.image_artifact
+    audio_model = load_classifier(audio_dir / "model.pkl")
+    image_model = load_classifier(image_dir / "model.pkl")
+    audio_cfg = _load_artifact_config(audio_dir)
+    image_cfg = _load_artifact_config(image_dir)
+
+    if args.split == "dev":
+        paired = enumerate_paired(cfg.data.dev_dirs)
+    else:
+        dirs = _resolve_unlabeled_dirs(cfg, args)
+        paired = enumerate_paired(dirs, label_required=False)
+
+    print(f"  paired: {len(paired)} samples")
+    audio_samples, image_samples = _split_paired(paired)
+
+    Xa, _, names, _ = extract_set(audio_samples, audio_cfg, "audio")
+    Xi, _, _, _ = extract_set(image_samples, image_cfg, "image")
+    a_scores = np.asarray(audio_model.estimator.decision_function(Xa), dtype=np.float64)
+    i_scores = np.asarray(image_model.estimator.decision_function(Xi), dtype=np.float64)
+    fused = score_fusion(fmodel, a_scores, i_scores)
+
+    if args.split == "dev":
+        y = np.asarray([s.label for s in paired])
+        m = evaluate(fused, y, threshold=cfg.output.hard_threshold_logit)
+        print()
+        print(format_metrics(m))
+        _print_score_distribution(fused, y)
+        return
+
+    out = args.results_dir / cfg.output.result_filename
+    write_result_file(names, fused, cfg.output.hard_threshold_logit, out)
+    n_pos = int((fused >= cfg.output.hard_threshold_logit).sum())
+    print(f"Wrote {out}: {len(names)} segments  ({n_pos} predicted target)")
+
+
+def _split_paired(paired):
+    from data import Sample
+
+    audio = [
+        Sample(p.audio_path, p.name, p.label, p.speaker_id, p.session_id)
+        for p in paired
+    ]
+    image = [
+        Sample(p.image_path, p.name, p.label, p.speaker_id, p.session_id)
+        for p in paired
+    ]
+    return audio, image
+
+
+def _print_score_distribution(scores: np.ndarray, y: np.ndarray) -> None:
+    print("\nScore distribution:")
+    for lab, lab_name in [(1, "target  "), (0, "non-tgt ")]:
+        s_lab = scores[y == lab]
+        if len(s_lab) > 0:
+            print(
+                f"  {lab_name} n={len(s_lab):3d}  "
+                f"min={s_lab.min():+7.3f}  med={float(np.median(s_lab)):+7.3f}  "
+                f"max={s_lab.max():+7.3f}"
+            )
 
 
 def main() -> int:
@@ -54,61 +143,36 @@ def main() -> int:
     ap.add_argument("--artifacts", type=Path, default=Path("artifacts"))
     ap.add_argument(
         "--split",
-        choices=["dev"],
+        choices=["dev", "eval"],
         default=None,
-        help="Evaluate metrics on the dev split listed in the config",
+        help="dev = compute metrics; eval = score config.data.eval_dirs and write the result file",
     )
     ap.add_argument(
         "--input",
         type=Path,
         default=None,
-        help="Unlabeled directory of WAVs (test/eval mode)",
+        help="score an arbitrary unlabeled directory (overrides eval_dirs)",
     )
     ap.add_argument(
         "--results-dir",
         type=Path,
         default=Path("results"),
-        help="Where to write the result file in --input mode",
+        help="where to write the result file in eval / --input mode",
     )
     args = ap.parse_args()
 
-    if (args.split is None) == (args.input is None):
-        ap.error("specify exactly one of --split dev | --input DIR")
+    if args.split is None and args.input is None:
+        ap.error("specify --split {dev,eval} or --input DIR")
+    if args.split == "dev" and args.input is not None:
+        ap.error("--input is not used with --split dev")
 
     cfg = load_config(args.config)
-    if cfg.modality != "audio":
-        raise ValueError(f"this script handles modality='audio', got {cfg.modality!r}")
-
-    model_path = args.artifacts / cfg.name / "model.pkl"
-    print(f"Loading model: {model_path}")
-    model = load(model_path)
-
-    if args.split == "dev":
-        print(f"Extracting dev features from {[str(d) for d in cfg.data.dev_dirs]} ...")
-        X, y, _names = extract_set(cfg, cfg.data.dev_dirs, require_label=True)
-        scores = score(model, X)
-        m = evaluate(scores, y, threshold=cfg.output.hard_threshold_logit)
-        print()
-        print(format_metrics(m))
-        print("\nScore distribution:")
-        for lab, lab_name in [(1, "target  "), (0, "non-tgt ")]:
-            s_lab = scores[y == lab]
-            if len(s_lab) > 0:
-                print(
-                    f"  {lab_name} n={len(s_lab):3d}  "
-                    f"min={s_lab.min():+7.3f}  med={float(np.median(s_lab)):+7.3f}  "
-                    f"max={s_lab.max():+7.3f}"
-                )
+    if cfg.modality in ("audio", "image"):
+        evaluate_unimodal(cfg, args, cfg.modality)
+    elif cfg.modality == "fusion":
+        evaluate_fusion(cfg, args)
     else:
-        assert args.input is not None
-        print(f"Extracting eval features from {args.input} ...")
-        X, _y, names = extract_set(cfg, [args.input], require_label=False)
-        scores = score(model, X)
-        out = args.results_dir / cfg.output.result_filename
-        write_result_file(names, scores, cfg.output.hard_threshold_logit, out)
-        n_pos = int((scores >= cfg.output.hard_threshold_logit).sum())
-        print(f"Wrote {out}: {len(names)} segments  ({n_pos} predicted target)")
-
+        raise ValueError(f"unknown modality: {cfg.modality!r}")
     return 0
 
 

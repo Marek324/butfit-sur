@@ -1,0 +1,52 @@
+# Baseline image system: HOG features + balanced logreg.
+# Single-target verification of m431.
+#
+# Augmentation is applied OFFLINE — run once, then training picks up
+# augmented samples from disk via train_dirs:
+#   uv run scripts/augment_dataset.py --config configs/augment_image.toml
+
+name = "image_baseline_logreg"
+modality = "image"
+
+[data]
+target_id = "m431"
+train_dirs = [
+    "dataset/target_train",
+    "dataset/target_train_aug",
+    "dataset/non_target_train",
+    "dataset/non_target_train_aug",
+]
+dev_dirs   = ["dataset/target_dev", "dataset/non_target_dev"]
+eval_dirs  = ["dataset/eval"]
+
+[validation]
+strategy = "holdout_dev"
+cv_folds = 2
+
+# 80×80 face crops → grayscale → HOG. Hand-crafted DSP descriptor; no learned
+# weights. 8×8 cells, 2×2 cell blocks, 9 orientations ⇒ 2916-d feature vector.
+[image.features]
+method = "hog"
+image_size = [80, 80]
+grayscale = true
+hog_orientations = 9
+hog_pixels_per_cell = [8, 8]
+hog_cells_per_block = [2, 2]
+hog_block_norm = "L2-Hys"
+pca_components = 0
+
+[classifier]
+type = "logreg"
+
+[classifier.logreg]
+# C=0.1 picked from configs/experiments/image_strong_reg.toml — best stress-dev EER
+# (40.00%) without sacrificing clean-dev AUC. See docs/devjournal/2026-05-03-image-experiments.md
+C = 0.1
+class_weight = "balanced"     # "" disables; "balanced" enforces 50/50 prior
+penalty = "l2"
+max_iter = 1000
+
+[output]
+result_filename = "image_logreg.txt"
+score = "logit"
+hard_threshold_logit = 0.0    # logit=0 ⇔ P(target)=0.5 ⇔ assignment 50/50 prior

@@ -13,6 +13,9 @@ class DataCfg:
     target_id: str
     train_dirs: list[Path]
     dev_dirs: list[Path]
+    # Directories holding the unlabeled evaluation set (May 3rd release).
+    # Used by `evaluate.py --split eval`. Empty list disables that mode.
+    eval_dirs: list[Path] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -64,48 +67,50 @@ class WaveformAugCfg:
     eq_gain_db_range: tuple[float, float] = (-3.0, 3.0)
     eq_freq_hz_range: tuple[float, float] = (200.0, 4000.0)
     eq_q: float = 1.0
-
-
-@dataclass(frozen=True)
-class FeatureSpaceAugCfg:
-    enabled: bool = False
-    sigma_per_dim_source: str = "non_target_within_speaker"
-    sigma_multiplier: float = 1.0
-
-
-@dataclass(frozen=True)
-class AugTrainCfg:
-    enabled: bool = True
-    n_per_target: int = 15
-    n_per_nontarget: int = 0
-    seed: int = 42
-    waveform: WaveformAugCfg = field(default_factory=WaveformAugCfg)
-    feature_space: FeatureSpaceAugCfg = field(default_factory=FeatureSpaceAugCfg)
-
-
-@dataclass(frozen=True)
-class AugDevCfg:
-    """Disjoint-envelope dev augmentation. Off by default; recommend disjoint
-    ranges from train so dev still measures generalization, not invariance."""
-
-    enabled: bool = False
-    n_per_target: int = 5
-    seed: int = 43
-    waveform: WaveformAugCfg = field(
-        default_factory=lambda: WaveformAugCfg(
-            time_stretch_range=(0.80, 0.88),
-            gain_db_range=(-12.0, -7.0),
-            eq_freq_hz_range=(4000.0, 7000.0),
-        )
-    )
+    # Additive white-Gaussian noise at a randomly drawn SNR. SNR is computed
+    # against the post-gain signal RMS, so quieter variants stay equally noisy
+    # in absolute terms. Set both endpoints to a high value (e.g. (60, 60)) to
+    # disable.
+    noise_snr_db_range: tuple[float, float] = (15.0, 30.0)
 
 
 @dataclass(frozen=True)
 class AudioCfg:
     vad: VadCfg = field(default_factory=VadCfg)
     features: AudioFeaturesCfg = field(default_factory=AudioFeaturesCfg)
-    augment_train: AugTrainCfg = field(default_factory=AugTrainCfg)
-    augment_dev: AugDevCfg = field(default_factory=AugDevCfg)
+
+
+@dataclass(frozen=True)
+class ImageFeaturesCfg:
+    method: str = "hog"  # | "raw_flatten"
+    image_size: tuple[int, int] = (80, 80)
+    grayscale: bool = True
+    hog_orientations: int = 9
+    hog_pixels_per_cell: tuple[int, int] = (8, 8)
+    hog_cells_per_block: tuple[int, int] = (2, 2)
+    hog_block_norm: str = "L2-Hys"
+    pca_components: int = 0  # 0 ⇒ no PCA reduction
+
+
+@dataclass(frozen=True)
+class ImageAugCfg:
+    """Image-augmentation envelope. Used by the offline augment_dataset.py
+    script — train-time augmentation is gone, augmented samples live on disk."""
+
+    horizontal_flip_p: float = 0.5
+    rotation_deg_range: tuple[float, float] = (-10.0, 10.0)
+    brightness_range: tuple[float, float] = (0.85, 1.15)
+    contrast_range: tuple[float, float] = (0.85, 1.15)
+    translate_pct: float = 0.05
+    crop_pct: float = 0.0
+    # Additive Gaussian pixel noise (per-channel, IID). Sigma is in [0, 1]
+    # image-value units; (0.0, 0.0) disables noise entirely.
+    noise_sigma_range: tuple[float, float] = (0.0, 0.04)
+
+
+@dataclass(frozen=True)
+class ImageCfg:
+    features: ImageFeaturesCfg = field(default_factory=ImageFeaturesCfg)
 
 
 @dataclass(frozen=True)
@@ -117,9 +122,35 @@ class LogregCfg:
 
 
 @dataclass(frozen=True)
+class SvmCfg:
+    C: float = 1.0
+    class_weight: str = "balanced"
+    kernel: str = "rbf"  # informational; classifier dispatches on type
+    gamma: str = "scale"  # | a stringified float, e.g. "0.05"
+
+
+@dataclass(frozen=True)
 class ClassifierCfg:
-    type: str = "logreg"  # | "svm_rbf"
+    type: str = "logreg"  # | "svm_rbf" | "svm_linear"
     logreg: LogregCfg = field(default_factory=LogregCfg)
+    svm: SvmCfg = field(default_factory=SvmCfg)
+
+
+@dataclass(frozen=True)
+class FusionCfg:
+    audio_artifact: str = ""  # name of artifacts/<dir> for the audio system to fuse
+    image_artifact: str = ""  # name of artifacts/<dir> for the image system to fuse
+    score_normalize: str = "none"  # | "zscore" — applied before fusion logreg
+    classifier: ClassifierCfg = field(default_factory=ClassifierCfg)
+    train_on: str = (
+        "dev"  # which split to use as fusion training data ("dev" | "cv_oof")
+    )
+
+
+@dataclass(frozen=True)
+class CacheCfg:
+    enabled: bool = True
+    root: Path = Path("artifacts/cache")
 
 
 @dataclass(frozen=True)
@@ -136,7 +167,10 @@ class Config:
     data: DataCfg
     validation: ValidationCfg = field(default_factory=ValidationCfg)
     audio: AudioCfg = field(default_factory=AudioCfg)
+    image: ImageCfg = field(default_factory=ImageCfg)
+    fusion: FusionCfg = field(default_factory=FusionCfg)
     classifier: ClassifierCfg = field(default_factory=ClassifierCfg)
+    cache: CacheCfg = field(default_factory=CacheCfg)
     output: OutputCfg = field(default_factory=OutputCfg)
 
 
@@ -171,27 +205,57 @@ def _from_dict(cls: type, data: dict[str, Any]) -> Any:
     return cls(**kwargs)
 
 
-def _flatten_audio_aug(audio: dict[str, Any]) -> dict[str, Any]:
-    """Map [audio.augment.train] / [audio.augment.dev] in TOML to
-    AudioCfg.augment_train / AudioCfg.augment_dev in the dataclass schema."""
-    aug = audio.get("augment")
-    if not isinstance(aug, dict):
-        return audio
-    out = {k: v for k, v in audio.items() if k != "augment"}
-    if "train" in aug:
-        out["augment_train"] = aug["train"]
-    if "dev" in aug:
-        out["augment_dev"] = aug["dev"]
-    extra = set(aug) - {"train", "dev"}
-    if extra:
-        raise ValueError(f"unknown keys in [audio.augment]: {sorted(extra)}")
-    return out
-
-
 def load_config(path: Path | str) -> Config:
     path = Path(path)
     with path.open("rb") as f:
         raw = tomllib.load(f)
-    if "audio" in raw:
-        raw["audio"] = _flatten_audio_aug(raw["audio"])
     return _from_dict(Config, raw)
+
+
+# --- Offline augmentation config (consumed by scripts/augment_dataset.py) ---
+
+
+@dataclass(frozen=True)
+class AudioAugmentConfig:
+    """Top-level config for `scripts/augment_dataset.py` in audio mode."""
+
+    modality: str  # must be "audio"
+    source_target_dir: Path
+    source_nontarget_dir: Path
+    output_target_dir: Path
+    output_nontarget_dir: Path
+    n_per_target: int = 15
+    n_per_nontarget: int = 0
+    seed: int = 42
+    waveform: WaveformAugCfg = field(default_factory=WaveformAugCfg)
+
+
+@dataclass(frozen=True)
+class ImageAugmentConfig:
+    """Top-level config for `scripts/augment_dataset.py` in image mode."""
+
+    modality: str  # must be "image"
+    source_target_dir: Path
+    source_nontarget_dir: Path
+    output_target_dir: Path
+    output_nontarget_dir: Path
+    n_per_target: int = 15
+    n_per_nontarget: int = 0
+    seed: int = 42
+    envelope: ImageAugCfg = field(default_factory=ImageAugCfg)
+
+
+def load_augment_config(
+    path: Path | str,
+) -> AudioAugmentConfig | ImageAugmentConfig:
+    path = Path(path)
+    with path.open("rb") as f:
+        raw = tomllib.load(f)
+    modality = raw.get("modality")
+    if modality == "audio":
+        return _from_dict(AudioAugmentConfig, raw)
+    if modality == "image":
+        return _from_dict(ImageAugmentConfig, raw)
+    raise ValueError(
+        f"augment config {path}: modality must be 'audio' or 'image', got {modality!r}"
+    )

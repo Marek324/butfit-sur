@@ -1,0 +1,22 @@
+# Stress-dev image augmentation. Disjoint envelope from configs/augment_image.toml
+# (train). See augment_dev_audio.toml for rationale.
+
+modality = "image"
+
+source_target_dir    = "dataset/target_dev"
+source_nontarget_dir = "dataset/non_target_dev"
+output_target_dir    = "dataset/target_dev_stress"
+output_nontarget_dir = "dataset/non_target_dev_stress"
+
+n_per_target    = 5
+n_per_nontarget = 2
+seed            = 99
+
+[envelope]
+horizontal_flip_p   = 0.5
+rotation_deg_range  = [-25.0, -15.0]   # train was [-10, 10] — disjoint, larger one-sided rotation
+brightness_range    = [0.45, 0.70]     # train was [0.85, 1.15] — much darker
+contrast_range      = [0.50, 0.75]     # train was [0.85, 1.15] — lower contrast
+translate_pct       = 0.10             # train was 0.05 — 2× larger
+crop_pct            = 0.10             # train was 0 — adds new dimension
+noise_sigma_range   = [0.05, 0.12]     # train was [0, 0.04] — much noisier

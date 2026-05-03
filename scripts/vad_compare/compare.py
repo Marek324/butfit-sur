@@ -22,7 +22,9 @@ EZ = Path("scripts/vad_compare/energy_zcr_segments.json")
 HOP_MS = 10  # discretization for frame-level comparison
 
 
-def segments_to_mask(segments: list[list[float]], dur_s: float, hop_ms: int) -> list[bool]:
+def segments_to_mask(
+    segments: list[list[float]], dur_s: float, hop_ms: int
+) -> list[bool]:
     n = max(1, int(round(dur_s * 1000.0 / hop_ms)))
     mask = [False] * n
     for start, end in segments:
@@ -66,7 +68,9 @@ def split_of(rel_path: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--per-file", action="store_true", help="print per-file metrics too")
+    ap.add_argument(
+        "--per-file", action="store_true", help="print per-file metrics too"
+    )
     args = ap.parse_args()
 
     silero = json.loads(SILERO.read_text())
@@ -76,7 +80,9 @@ def main() -> int:
     only_silero = set(silero["files"]) - set(ez["files"])
     only_ez = set(ez["files"]) - set(silero["files"])
     if only_silero or only_ez:
-        print(f"WARNING: {len(only_silero)} silero-only, {len(only_ez)} ez-only files (skipped)")
+        print(
+            f"WARNING: {len(only_silero)} silero-only, {len(only_ez)} ez-only files (skipped)"
+        )
 
     by_split: dict[str, dict[str, list[float]]] = {}
     grand: dict[str, list[float]] = {
@@ -174,7 +180,10 @@ def main() -> int:
     print()
 
     # Distribution of disagreement.
-    deltas = [abs(s - e) for s, e in zip(grand["silero_ratio"], grand["ez_ratio"], strict=True)]
+    deltas = [
+        abs(s - e)
+        for s, e in zip(grand["silero_ratio"], grand["ez_ratio"], strict=True)
+    ]
     print(
         f"|silero_ratio - ez_ratio| over all files: "
         f"min={min(deltas):.3f} median={stats.median(deltas):.3f} "
@@ -186,13 +195,17 @@ def main() -> int:
     print("\nWorst 5 files by kappa:")
     print(f"  {'file':<55} dur   silR   ezR    P     R     IoU   kappa")
     for rel, dur, sr, er, p, r, iou, k in worst:
-        print(f"  {rel:<55} {dur:5.1f} {sr:5.3f} {er:5.3f} {p:5.3f} {r:5.3f} {iou:5.3f} {k:6.3f}")
+        print(
+            f"  {rel:<55} {dur:5.1f} {sr:5.3f} {er:5.3f} {p:5.3f} {r:5.3f} {iou:5.3f} {k:6.3f}"
+        )
 
     if args.per_file:
         print("\nAll files:")
         print(f"  {'file':<55} dur   silR   ezR    P     R     IoU   kappa")
         for rel, dur, sr, er, p, r, iou, k in sorted(per_file_rows):
-            print(f"  {rel:<55} {dur:5.1f} {sr:5.3f} {er:5.3f} {p:5.3f} {r:5.3f} {iou:5.3f} {k:6.3f}")
+            print(
+                f"  {rel:<55} {dur:5.1f} {sr:5.3f} {er:5.3f} {p:5.3f} {r:5.3f} {iou:5.3f} {k:6.3f}"
+            )
 
     return 0
 

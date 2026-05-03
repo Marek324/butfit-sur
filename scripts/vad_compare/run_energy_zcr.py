@@ -78,7 +78,9 @@ def compute_features(x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return energy_db, zcr
 
 
-def smooth_runs(mask: np.ndarray, min_speech_frames: int, min_silence_frames: int) -> np.ndarray:
+def smooth_runs(
+    mask: np.ndarray, min_speech_frames: int, min_silence_frames: int
+) -> np.ndarray:
     """Drop speech runs shorter than min_speech_frames, then merge silences shorter than min_silence_frames."""
     out = mask.copy()
 
@@ -112,7 +114,9 @@ def smooth_runs(mask: np.ndarray, min_speech_frames: int, min_silence_frames: in
     return out
 
 
-def mask_to_segments(mask: np.ndarray, hop_s: float, frame_s: float) -> list[list[float]]:
+def mask_to_segments(
+    mask: np.ndarray, hop_s: float, frame_s: float
+) -> list[list[float]]:
     """Convert a per-frame boolean mask to [start_s, end_s] segments."""
     segs = []
     n = len(mask)

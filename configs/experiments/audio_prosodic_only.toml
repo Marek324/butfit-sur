@@ -1,0 +1,55 @@
+# Audio experiment: drop MFCC means, use only the 5 prosodic features
+# (log-F0 mean/std, jitter, shimmer, voicing ratio). Tests whether the
+# speaker-defining prosodic signal alone is robust enough — these features
+# survive heavy noise/EQ better than MFCC means in principle.
+
+name = "audio_exp_prosodic_only"
+modality = "audio"
+
+[data]
+target_id = "m431"
+train_dirs = [
+    "dataset/target_train",
+    "dataset/target_train_aug",
+    "dataset/non_target_train",
+    "dataset/non_target_train_aug",
+]
+dev_dirs   = ["dataset/target_dev", "dataset/non_target_dev"]
+eval_dirs  = ["dataset/eval"]
+
+[audio.vad]
+algorithm = "energy_zcr"
+frame_ms = 25
+hop_ms = 10
+preemphasis = 0.97
+noise_percentile = 10.0
+energy_margin_db = 8.0
+zcr_aid_margin_db = 4.0
+zcr_low = 0.02
+zcr_high = 0.35
+min_speech_ms = 100
+min_silence_ms = 100
+
+[audio.features]
+f0_method = "pyin"
+f0_min_hz = 60.0
+f0_max_hz = 400.0
+include = ["log_f0_mean", "log_f0_std", "jitter_local", "shimmer_local", "voicing_ratio"]
+mfcc_n_means = 0                # no MFCC features
+mfcc_n = 13
+mel_filters = 23
+cmvn = "per_utterance"
+
+[classifier]
+type = "logreg"
+
+[classifier.logreg]
+C = 1.0
+class_weight = "balanced"
+penalty = "l2"
+max_iter = 1000
+
+[output]
+result_filename = "audio_prosodic_only.txt"
+score = "logit"
+hard_threshold_logit = 0.0

@@ -1,0 +1,39 @@
+# Image experiment: same HOG features, SVM-RBF instead of logreg. Tests
+# whether a non-linear classifier finds structure HOG+linear misses.
+
+name = "image_exp_svm_rbf"
+modality = "image"
+
+[data]
+target_id = "m431"
+train_dirs = [
+    "dataset/target_train",
+    "dataset/target_train_aug",
+    "dataset/non_target_train",
+    "dataset/non_target_train_aug",
+]
+dev_dirs   = ["dataset/target_dev", "dataset/non_target_dev"]
+eval_dirs  = ["dataset/eval"]
+
+[image.features]
+method = "hog"
+image_size = [80, 80]
+grayscale = true
+hog_orientations = 9
+hog_pixels_per_cell = [8, 8]
+hog_cells_per_block = [2, 2]
+hog_block_norm = "L2-Hys"
+
+[classifier]
+type = "svm_rbf"
+
+[classifier.svm]
+C = 1.0
+class_weight = "balanced"
+kernel = "rbf"
+gamma = "scale"
+
+[output]
+result_filename = "image_svm_rbf.txt"
+score = "logit"             # svm decision_function — boundary still at 0
+hard_threshold_logit = 0.0

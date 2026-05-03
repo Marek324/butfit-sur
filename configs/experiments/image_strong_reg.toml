@@ -1,0 +1,40 @@
+# Image experiment: same HOG features, stronger L2 regularization (C=0.1
+# vs baseline C=1.0). Tests whether the saturated-clean-dev signal is from
+# overfit weights rather than overfit features.
+
+name = "image_exp_strong_reg"
+modality = "image"
+
+[data]
+target_id = "m431"
+train_dirs = [
+    "dataset/target_train",
+    "dataset/target_train_aug",
+    "dataset/non_target_train",
+    "dataset/non_target_train_aug",
+]
+dev_dirs   = ["dataset/target_dev", "dataset/non_target_dev"]
+eval_dirs  = ["dataset/eval"]
+
+[image.features]
+method = "hog"
+image_size = [80, 80]
+grayscale = true
+hog_orientations = 9
+hog_pixels_per_cell = [8, 8]
+hog_cells_per_block = [2, 2]
+hog_block_norm = "L2-Hys"
+
+[classifier]
+type = "logreg"
+
+[classifier.logreg]
+C = 0.1
+class_weight = "balanced"
+penalty = "l2"
+max_iter = 1000
+
+[output]
+result_filename = "image_strong_reg.txt"
+score = "logit"
+hard_threshold_logit = 0.0

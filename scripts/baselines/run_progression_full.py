@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import json
 import sys
 import time
@@ -15,7 +14,7 @@ from skimage.feature import hog
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from ikrlib import (  # noqa: E402
+from ikrlib import (  
     png2fea,
     train_gmm,
     logpdf_gmm,
@@ -178,7 +177,7 @@ def run_image_steps():
     # We can read existing eval result file for the eval count
     sys.path.insert(0, str(HERE.parent.parent / "src"))
     try:
-        from classifier import load as load_classifier  # noqa: E402
+        from classifier import load as load_classifier  
         prod = load_classifier(Path("artifacts/image_baseline_logreg/model.pkl"))
         s_dv4 = np.r_[prod.estimator.decision_function(h["dev_t"]), prod.estimator.decision_function(h["dev_n"])]
         s_st4 = np.r_[prod.estimator.decision_function(h["stress_t"]), prod.estimator.decision_function(h["stress_n"])]

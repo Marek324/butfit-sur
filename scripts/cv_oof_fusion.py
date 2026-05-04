@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 import argparse
 import sys
 from pathlib import Path
@@ -6,16 +6,16 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC))
 
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-from sklearn.linear_model import LogisticRegression  # noqa: E402
-from sklearn.metrics import roc_auc_score, roc_curve  # noqa: E402
-from sklearn.model_selection import StratifiedKFold  # noqa: E402
+import matplotlib.pyplot as plt  
+import numpy as np  
+from sklearn.linear_model import LogisticRegression  
+from sklearn.metrics import roc_auc_score, roc_curve  
+from sklearn.model_selection import StratifiedKFold  
 
-from classifier import load as load_classifier  # noqa: E402
-from config import load_config  # noqa: E402
-from data import enumerate_paired  # noqa: E402
-from experiments.runners import _score_paired  # noqa: E402
+from classifier import load as load_classifier  
+from config import load_config  
+from data import enumerate_paired  
+from experiments.runners import _score_paired  
 
 
 def main() -> int:

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 import argparse
 import sys
 from pathlib import Path
@@ -6,15 +6,15 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC))
 
-import numpy as np  # noqa: E402
+import numpy as np  
 
-from classifier import load as load_classifier  # noqa: E402
-from config import Config, load_config  # noqa: E402
-from data import enumerate_paired, enumerate_split  # noqa: E402
-from eval import evaluate, format_metrics  # noqa: E402
-from experiments import extract_set, score_unlabeled  # noqa: E402
-from fusion import load as load_fusion, score_fusion  # noqa: E402
-from score import write_result_file  # noqa: E402
+from classifier import load as load_classifier  
+from config import Config, load_config  
+from data import enumerate_paired, enumerate_split  
+from eval import evaluate, format_metrics  
+from experiments import extract_set, score_unlabeled  
+from fusion import load as load_fusion, score_fusion  
+from score import write_result_file  
 
 
 def _modality_extension(modality: str) -> str:

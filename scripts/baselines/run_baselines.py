@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 import json
 import sys
 import time
@@ -11,7 +11,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from ikrlib import (  # noqa: E402
+from ikrlib import (  
     png2fea,
     wav16khz2mfcc,
     train_gmm,

@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-
-from __future__ import annotations
-
 import argparse
 import shutil
 import sys
@@ -12,8 +8,8 @@ import numpy as np
 SRC = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC))
 
-from config import load_config  # noqa: E402
-from experiments import run_experiment  # noqa: E402
+from config import load_config  
+from experiments import run_experiment  
 
 def set_seed(seed: int) -> None:
     random.seed(seed)

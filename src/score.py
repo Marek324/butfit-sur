@@ -2,7 +2,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 def write_result_file(
     names: list[str],
     scores: np.ndarray,

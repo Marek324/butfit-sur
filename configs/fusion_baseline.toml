@@ -10,13 +10,7 @@ eval_dirs  = ["dataset/eval"]
 [fusion]
 audio_artifact = "audio_baseline_logreg"
 image_artifact = "image_baseline_logreg"
-# zscore: equalize per-modality score scales before fitting the fusion logreg.
-# Helps when one modality (e.g. SVM hinge distance) has a wildly different
-# decision_function range from the other (logit).
 score_normalize = "zscore"
-# 'dev' uses the dev split labels to fit fusion. Reported dev metrics will be
-# biased optimistic. 'cv_oof' would generate unbiased fusion-training scores
-# from per-modality CV, but is currently unimplemented.
 train_on = "dev"
 
 [fusion.classifier]
@@ -24,13 +18,11 @@ type = "logreg"
 
 [fusion.classifier.logreg]
 C = 1.0
-class_weight = "balanced"     # enforces 50/50 prior at the fusion layer too:
-                              # dev split is ~10/60 target/non-target, so without
-                              # balancing the fusion logreg would pick up that bias.
+class_weight = "balanced"
 penalty = "l2"
 max_iter = 1000
 
 [output]
 result_filename = "fusion_logreg.txt"
 score = "logit"
-hard_threshold_logit = 0.0    # logit=0 ⇔ P(target)=0.5 ⇔ assignment 50/50 prior
+hard_threshold_logit = 0.0 

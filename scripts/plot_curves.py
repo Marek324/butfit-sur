@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 import argparse
 import sys
 from pathlib import Path
@@ -6,16 +6,16 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC))
 
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-from scipy.stats import norm  # noqa: E402
-from sklearn.metrics import roc_auc_score, roc_curve  # noqa: E402
+import matplotlib.pyplot as plt  
+import numpy as np  
+from scipy.stats import norm  
+from sklearn.metrics import roc_auc_score, roc_curve  
 
-from classifier import load as load_classifier  # noqa: E402
-from config import Config, load_config  # noqa: E402
-from data import Sample, enumerate_paired, enumerate_split  # noqa: E402
-from experiments import extract_set  # noqa: E402
-from fusion import load as load_fusion, score_fusion  # noqa: E402
+from classifier import load as load_classifier  
+from config import Config, load_config  
+from data import Sample, enumerate_paired, enumerate_split  
+from experiments import extract_set  
+from fusion import load as load_fusion, score_fusion  
 
 DET_TICKS = (0.0001, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.4)
 DET_AXIS_RANGE = (5e-5, 0.5)

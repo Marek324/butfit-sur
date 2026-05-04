@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 import json
 import sys
 from pathlib import Path
@@ -11,7 +11,7 @@ from skimage.feature import hog
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from ikrlib import png2fea  # noqa: E402
+from ikrlib import png2fea  
 
 
 def _hog_set(d: dict) -> np.ndarray:

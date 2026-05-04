@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-
-from __future__ import annotations
-
 import argparse
 import shutil
 import sys
@@ -11,8 +7,8 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC))
 
-from config import load_config  # noqa: E402
-from experiments import compare_runs, run_experiment  # noqa: E402
+from config import load_config  
+from experiments import compare_runs, run_experiment  
 
 
 def main() -> int:

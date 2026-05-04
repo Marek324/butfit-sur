@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import argparse
 import sys
 import time
@@ -8,17 +7,17 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC))
 
-import numpy as np  # noqa: E402
-from PIL import Image  # noqa: E402
+import numpy as np  
+from PIL import Image  
 
-from audio_augment import augment_waveform  # noqa: E402
-from config import (  # noqa: E402
+from audio_augment import augment_waveform  
+from config import (  
     AudioAugmentConfig,
     ImageAugmentConfig,
     load_augment_config,
 )
-from data import EXPECTED_SR, load_png, load_wav_mono16k  # noqa: E402
-from image_augment import augment as augment_image_fn  # noqa: E402
+from data import EXPECTED_SR, load_png, load_wav_mono16k  
+from image_augment import augment as augment_image_fn  
 
 
 def _write_wav(path: Path, x: np.ndarray, sr: int) -> None:

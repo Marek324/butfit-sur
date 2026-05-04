@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-
-from __future__ import annotations
-
 import argparse
 import json
 import sys
@@ -10,14 +6,14 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC))
 
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-from sklearn.metrics import roc_auc_score, roc_curve  # noqa: E402
+import matplotlib.pyplot as plt  
+import numpy as np  
+from sklearn.metrics import roc_auc_score, roc_curve  
 
-from config import load_config  # noqa: E402
+from config import load_config  
 
 # We re-use the plot_curves.py scoring helpers when --dev-dirs is given.
-from plot_curves import score_dev  # noqa: E402
+from plot_curves import score_dev  
 
 
 def _eer(scores: np.ndarray, y: np.ndarray) -> tuple[float, float]:

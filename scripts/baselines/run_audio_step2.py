@@ -11,7 +11,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from ikrlib import (  # noqa: E402
+from ikrlib import ( 
     mfcc as course_mfcc,
     train_gmm,
     logpdf_gmm,

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 import argparse
 import pickle
 import sys
@@ -7,8 +7,8 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC))
 
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
+import matplotlib.pyplot as plt  
+import numpy as np  
 
 
 def _load_pkl(p: Path):
@@ -114,7 +114,6 @@ def main() -> int:
         f"Image: top-{args.top_k} per direction (of {len(i_coef)}), intercept={i_int:+.3f}"
     )
     ax.grid(True, axis="x", alpha=0.3)
-    # Inset histogram of all weights.
     ax_inset = ax.inset_axes((0.62, 0.05, 0.36, 0.32))
     ax_inset.hist(i_coef, bins=80, color="0.6", edgecolor="white")
     ax_inset.axvline(0, color="0.3", linewidth=0.8)

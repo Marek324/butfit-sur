@@ -1,119 +1,121 @@
 ---
-title: "Person Verification for Subject m431 from Face and Voice"
-subtitle: "SUR 2025/2026 Project Documentation"
-author: "Marek (login: hrmajo1)"
+title: "SUR 2025/2026 Project"
+author:
+  - "Marek Hric (xhricma00)"
+  - "Jakub Komanický (xkomanj00)"
 date: "2026-05-04"
 geometry: margin=2cm
 fontsize: 10pt
 ---
 
-# Abstract
-
-We build a person-verification detector for subject *m431* from face crops and
-voice recordings under the assignment's no-external-data, no-pretrained-models
-constraint. The pipeline combines classical feature extractors — Histogram of
-Oriented Gradients [@dalal2005hog] for images, mel-frequency cepstral
-coefficients [@davis1980mfcc] with prosodic statistics for audio — with
-balanced linear classifiers calibrated to the prior-0.5 decision rule. From
-the syllabus baselines (PCA + Gaussian LDA for images; two-GMM scoring for
-audio) we trace each system to its production form by changing one design
-choice per step. A disjoint-augmentation *stress* development split exposed a
-voice activity detection failure on attenuated audio; a hybrid VAD-on / VAD-off
-GMM-UBM [@reynolds2000gmmubm] system patches the failure and recovers stress
-robustness without regressing the saturated clean development split. The
-submission ships six result files: one image, two audio, and three fusion
-variants over their score-level combinations.
-
 # 1. Data and Augmentation
 
-The corpus is 80×80 RGB face crops (PNG) and 16-kHz monophonic recordings
-(WAV). Target train holds 20 paired stems (sessions 01–02 of *m431*); target
-dev holds 10 paired stems (session 03). Non-target train has 132 stems from
-13 speakers; non-target dev has 60 stems from a *disjoint* set of 6 speakers.
-The split is therefore session-disjoint for *m431* and speaker-disjoint for
-the impostors, pre-stressing generalisation to unseen identities.
+The supplied splits are session-disjoint for the target (train holds
+*m431* sessions 01–02, dev holds session 03) and speaker-disjoint for
+the impostors (13 speakers in train, 6 distinct speakers in dev),
+which pre-stresses generalisation to unseen identities and an unseen
+recording session of the target. The remainder of this report traces
+each per-modality system from the syllabus baseline to its production
+form by changing one design choice per step, so individual metric
+deltas are attributable to specific decisions.
 
-Augmentation is offline (`scripts/augment_dataset.py`), producing
-`dataset/*_aug` directories enumerated as ordinary samples at training. Audio
-augmentation applies time stretch (0.9–1.1×), gain (±6 dB), polarity flip
-($p=0.5$), peaking EQ (±3 dB at 200–4000 Hz) and additive WGN
-(SNR 15–30 dB). Image augmentation applies horizontal flip ($p=0.5$),
-rotation (±10°), translation (±5 %), brightness and contrast scaling
-(0.85–1.15×) and per-pixel WGN ($\sigma\in[0,0.04]$). Vertical flip and hue
-rotation are excluded because faces are not vertically symmetric and skin
-tone is identity-relevant. The augmentation count is 15× per target sample
-and 5× per non-target — an explicit asymmetry, since the target class has
-only 30 base utterances total. Class imbalance is handled at the loss level
-via `class_weight='balanced'` [@pedregosa2011scikit], so the trained
-classifier intercept satisfies $P(\text{target}\mid x)=0.5$ at logit zero
-regardless of the empirical training ratio.
+Augmentation is performed once, offline (`scripts/augment_dataset.py`),
+producing `dataset/*_aug` directories that the trainer enumerates as
+ordinary samples. Audio augmentation applies time stretch (0.9–1.1×),
+gain (±6 dB), polarity flip ($p=0.5$), peaking equalisation (±3 dB at
+200–4000 Hz) and additive white Gaussian noise (SNR 15–30 dB). Image
+augmentation applies horizontal flip ($p=0.5$), rotation (±10°),
+translation (±5 %), brightness and contrast scaling (0.85–1.15×) and
+per-pixel WGN ($\sigma\in[0,0.04]$). Vertical flip and hue rotation are
+excluded because faces are not vertically symmetric and skin tone is
+identity-relevant. The augmentation count is 15× per target sample and
+5× per non-target — an explicit asymmetry, since the target class has
+only 30 base utterances total. Class imbalance is handled at the loss
+level via `class_weight='balanced'` [@pedregosa2011scikit], so the
+trained classifier intercept satisfies $P(\text{target}\mid x)=0.5$ at
+logit zero regardless of the empirical training ratio.
 
-# 2. Methods
+# 2. Image System
 
-## 2.1 Image: HOG + regularised logistic regression
-
-Image features are 9-bin HOG [@dalal2005hog] over 8×8-pixel cells with
-2×2-cell L2-Hys normalised blocks on 80×80 grayscale crops, yielding 2916-d
-vectors. A balanced LogReg ($C=0.1$, L2) classifies them. Hard decisions
-threshold $\mathrm{decision\_function}$ at zero. The progression from the
-syllabus baseline isolates three design changes:
+Image features are 9-bin Histograms of Oriented Gradients
+[@dalal2005hog] over 8×8-pixel cells with 2×2-cell L2-Hys normalised
+blocks on 80×80 grayscale crops, yielding 2916-d vectors. A balanced
+logistic regression with L2 regularisation ($C=0.1$) classifies them.
+Hard decisions threshold $\mathrm{decision\_function}$ at zero. The
+progression from the syllabus baseline isolates three design changes:
 
 | Step | Description | AUC | EER |
 |------|-------------|----:|----:|
-| 1 | Baseline: pixels → PCA(D=21) → Gaussian LDA + 2 IRLS                   | 0.943 | 20.00 % |
-| 2 | HOG → PCA(D=21) → Gaussian LDA + 2 IRLS                                | 0.977 |  9.17 % |
-| 3 | HOG (full 2916-d) → balanced LogReg, $C=0.1$, no augmentation         | 0.903 | 21.67 % |
-| 4 | + offline augmentation (production)                                    | 1.000 |  0.00 % |
+| 1 | Baseline: pixels → PCA(D=21) → Gaussian LDA + 2 IRLS                    | 0.943 | 20.00 % |
+| 2 | HOG → PCA(D=21) → Gaussian LDA + 2 IRLS                                 | 0.977 |  9.17 % |
+| 3 | HOG (full 2916-d) → balanced LogReg, $C=0.1$, no augmentation          | 0.903 | 21.67 % |
+| 4 | + offline augmentation (production)                                     | 1.000 |  0.00 % |
 
-Step 1→2 isolates the HOG vs. raw-pixel feature gain at fixed dimensionality.
-Step 2→3 is a *regression*: dropping PCA in favour of full-dimensional HOG +
-L2 leaves the threshold-zero hard rule mis-calibrated with only 10 target
-training images. Step 3→4 shows that augmentation is what makes the
-high-dimensional architecture viable; full-dimensional + L2 in isolation is
-worse than the PCA-bridged baseline classifier.
+Step 1→2 isolates the HOG vs. raw-pixel feature gain at fixed
+dimensionality. Step 2→3 is a *regression*: dropping PCA in favour of
+full-dimensional HOG with L2 leaves the threshold-zero hard rule
+mis-calibrated at only 10 target training images. Step 3→4 shows that
+augmentation is what makes the high-dimensional architecture viable —
+full-dimensional + L2 in isolation is worse than the PCA-bridged
+baseline classifier of step 2.
 
-## 2.2 Audio: two complementary paths
+# 3. Audio System
 
 Both audio systems share the same frontend: an energy + zero-crossing-rate
-voice activity detector (VAD), 13 MFCCs at 25 ms / 10 ms framing via
-`librosa` [@mcfee2015librosa] with per-utterance cepstral
-mean–variance normalisation, and probabilistic-YIN F$_0$ estimation
-[@mauch2014pyin] over voiced frames in 60–400 Hz. From the F$_0$ track
+voice activity detector (VAD), 13 mel-frequency cepstral coefficients
+[@davis1980mfcc] at 25 ms / 10 ms framing via `librosa`
+[@mcfee2015librosa] with per-utterance cepstral mean–variance
+normalisation, and probabilistic-YIN F$_0$ estimation [@mauch2014pyin]
+over voiced frames in 60–400 Hz. From the F$_0$ track and frame energies
 we compute five prosodic statistics ($\log F_0$ mean and standard
 deviation, jitter, shimmer, voicing ratio).
 
-**Path A — aggregated features + LogReg.** The 5 prosodic statistics and
-the 13 MFCC means form an 18-d utterance-level vector classified by
-balanced LogReg ($C=1.0$). Submitted as `audio_logreg.txt`.
+**Path A — aggregated features and logistic regression.** The 5
+prosodic statistics and the 13 MFCC means form an 18-d utterance-level
+vector classified by balanced LogReg ($C=1.0$). This is shipped as
+`audio_logreg.txt`.
 
-**Path B — GMM-UBM, MAP-free.** Following [@reynolds2000gmmubm], we fit
-a 16-mixture diagonal-cov universal background model on non-target
-frames and a 4-mixture diagonal-cov target GMM on *m431* frames,
-*independently* by EM. We chose MAP-free over MAP adaptation because
-~32 k augmented target frames are plentiful at the per-component level
-($\alpha_k\to 1$ regardless of relevance factor), and a $\tau$-sweep over
-$\{5, 10, 20, 100, 500, 2000, 10000\}$ produced an AUC plateau of 0.98
-with the threshold-zero hard rule miscalibrated (EER threshold drifted
-to $+0.25$). Per-utterance score is the frame-averaged log-likelihood
-ratio.
+**Path B — Gaussian Mixture Model with universal background, MAP-free.**
+Following [@reynolds2000gmmubm] we fit a 16-mixture diagonal-covariance
+universal background model (UBM) on non-target frames and a 4-mixture
+diagonal-covariance target GMM on *m431* frames, *independently* by EM.
+We chose MAP-free over MAP adaptation because ~32 k augmented target
+frames are plentiful at the per-component level ($\alpha_k\to 1$
+regardless of relevance factor), and a relevance-factor sweep over
+$\tau\in\{5, 10, 20, 100, 500, 2000, 10000\}$ produced an AUC plateau
+of 0.98 with the threshold-zero hard rule miscalibrated (EER threshold
+drifted to $+0.25$). The per-utterance score is the frame-averaged
+log-likelihood ratio. We did not attempt i-vector front-end factor
+analysis [@dehak2011ivector] — the standard upgrade over GMM-UBM —
+because it requires hundreds of background speakers for the
+total-variability matrix to be estimable, whereas our pool has 19
+distinct non-target speakers.
 
 **The VAD-empty pathology.** Auditing eval revealed 79 of 1346 samples
-(5.9 %) producing identical audio score $\approx +1.535$. These extract
-to all-zero feature vectors: under heavy gain attenuation or short
-voiced segments, the energy-relative VAD trims every frame, leaving
-prosodic and CMVN-MFCC statistics at their zero-fallback. The trained
-classifier maps this zero input to a bias-driven default that happened
-to be positive, mislabelling all 79 as target. Spectral-flatness and
-voiced-fraction analysis confirmed all 79 are real speech, not white
-noise (median voiced fraction 0.60); the sentinel default was discarding
-genuine information.
+(5.9 %) producing identical audio score $\approx +1.535$. These
+extract to all-zero feature vectors: under heavy gain attenuation or
+short voiced segments, the energy-relative VAD trims every frame,
+leaving prosodic and MFCC statistics at their zero-fallback. The
+trained classifier maps this zero input to a bias-driven default that
+happened to be positive, mislabelling all 79 as target.
+Spectral-flatness and voiced-fraction analysis confirmed all 79 are
+real speech, not white noise (median voiced fraction 0.60); the
+sentinel default was discarding genuine information. The same
+pathology contaminates training: 121 of 1112 augmented training
+utterances also extract to zero vectors, with the target class
+disproportionately affected (81 zero-frame target augmentations vs. 40
+non-target), so the model also *learned* a small "zero $\Rightarrow$
+target" correlation as a class-asymmetric augmentation artefact.
 
 **Hybrid VAD-on / VAD-off fallback.** The fix is a routing scheme
-(`scripts/audio_gmm_hybrid.py`): an auxiliary 16+4 GMM-UBM is trained on
-the same MFCC frames *without* applying VAD; at scoring time the
+(`scripts/audio_gmm_hybrid.py`): an auxiliary 16+4 GMM-UBM is trained
+on the same MFCC frames *without* applying VAD; at scoring time the
 production VAD-on model is consulted first, and the no-VAD model takes
-over only when VAD has trimmed every frame. Submitted as
-`audio_gmm_hybrid.txt`.
+over only when VAD has trimmed every frame. The hybrid is shipped as
+`audio_gmm_hybrid.txt` and short-circuits both the eval-time sentinel
+defaults and the train-time spurious correlation at scoring.
+
+The audio progression covers both clean and stress development splits:
 
 | Step | Description | Clean AUC | Stress AUC |
 |------|-------------|----------:|-----------:|
@@ -122,52 +124,61 @@ over only when VAD has trimmed every frame. Submitted as
 | 3 | Production GMM-UBM (MAP-free, sentinel for VAD-empty)              | 0.997 | 0.463 |
 | 4 | Hybrid VAD-on/off (production)                                     | 0.997 | **0.870** |
 
-The progression makes a non-obvious finding visible: VAD and CMVN
-saturate clean dev (1→2) but degrade stress dev because they introduce
-the failure mode that step 4 must repair. The hybrid recovers the
-baseline's stress robustness without sacrificing clean-dev performance.
+VAD and CMVN saturate clean dev (steps 1→2) but degrade the stress
+split because they introduce the failure mode that step 4 must repair.
+The hybrid recovers the baseline's stress robustness without
+sacrificing clean-dev performance.
 
-## 2.3 Multimodal fusion
+# 4. Multimodal Fusion
 
-Fusion is at the score level. Per-modality dev scores are z-normalised; a
-balanced LogReg is fitted on the concatenated z-scores and dev labels, and
-applied to z-normalised eval scores at test time. Score-level was preferred
-to feature-level because the audio (18-d) and image (2916-d) feature spaces
-are extremely imbalanced: stacking them with ~1100 training samples invites
-the curse of dimensionality, whereas a 2- or 3-feature fusion logreg has
-too few parameters to overfit the 70-sample dev split. We submit:
+Fusion is performed at the score level. For each per-modality system,
+dev-set scores are z-normalised; a balanced logistic regression is
+fitted on the concatenated z-scores and the ground-truth labels; the
+classifier is then applied to z-normalised eval scores. Score-level was
+preferred to feature-level because the audio (18-d) and image (2916-d)
+spaces are extremely imbalanced: stacking them with ~1100 training
+samples invites the curse of dimensionality, whereas a 2- or 3-feature
+fusion logreg has too few parameters to overfit the 70-sample dev split.
+We submit three variants: `fusion_logreg.txt` over $(z(\text{audio\_logreg}),
+z(\text{image}))$; `fusion_hybrid_image.txt` over
+$(z(\text{audio\_gmm\_hybrid}), z(\text{image}))$; and `fusion_3way.txt`
+over $(z(\text{audio\_logreg}), z(\text{audio\_gmm\_hybrid}),
+z(\text{image}))$. The three-way variant tests whether the two audio
+paths capture complementary signal, since aggregated 18-d features and
+frame-level GMM likelihoods are structurally different objects.
 
-- `fusion_logreg.txt`: $(z(\text{audio\_logreg}), z(\text{image}))$.
-- `fusion_hybrid_image.txt`: $(z(\text{audio\_gmm\_hybrid}), z(\text{image}))$.
-- `fusion_3way.txt`: $(z(\text{audio\_logreg}), z(\text{audio\_gmm\_hybrid}), z(\text{image}))$.
-
-# 3. Validation Strategy
+# 5. Validation Strategy
 
 The clean `*_dev` split (n=70) is the primary diagnostic. To probe
-generalisation under input degradation we built a *stress* dev: same dev
-samples re-augmented with a *disjoint* envelope (gain $-15$ to $-8$ dB,
-SNR 3–13 dB, peaking EQ $-7$ to $-4$ dB at 4500–7500 Hz, time-stretch
-0.78–0.88, image brightness 0.45–0.70, per-pixel noise $\sigma\in[0,0.10]$),
-yielding 50 target / 120 non-target stress samples. Disjointness converts
-each stress sample from interpolation to extrapolation under the trained
-model.
+generalisation under input degradation we built a *stress* dev: the
+same dev samples re-augmented with a *disjoint* envelope (gain $-15$
+to $-8$ dB, SNR 3–13 dB, peaking EQ $-7$ to $-4$ dB at 4500–7500 Hz,
+time-stretch 0.78–0.88, image brightness 0.45–0.70, per-pixel noise
+$\sigma\in[0,0.10]$), yielding 50 target / 120 non-target stress samples.
+Disjointness converts each stress sample from interpolation to
+extrapolation under the trained model.
 
-We also ran a 2-fold leave-one-target-session-out session-grouped CV
-diagnostic (`scripts/cv_session_check.py`) on the training pool. Image
-holds AUC = 0.982 across folds; audio drops to 0.789 — confirming image
-features are session-invariant and audio is session-sensitive, motivating
-the use of *both* available target sessions for production training.
+We also ran a 2-fold leave-one-target-session-out session-grouped
+cross-validation (`scripts/cv_session_check.py`) on the training pool.
+Image AUC stays at 0.982 across folds; audio AUC drops to 0.789 —
+confirming image features are session-invariant and audio is
+session-sensitive, which motivates using *both* available target
+sessions (01 and 02) for production training.
 
-The 50/50-prior decision rule is enforced in two places: (i)
-`class_weight='balanced'` in every classifier, equalising effective
-per-class loss mass during training; (ii) `output.hard_threshold_logit
-= 0.0` in every config, so the hard decision is `score >= 0`. This
-implements the symmetric-cost detection-cost operating point
-[@martin1997det].
+The 50/50-prior decision rule is enforced in two places: every
+classifier sets `class_weight='balanced'` (equalising effective
+per-class loss mass during training, so the trained intercept
+satisfies $P(\text{target}\mid x)=0.5$ at logit zero); and every config
+sets `output.hard_threshold_logit = 0.0`, so the hard decision is
+$\mathrm{score}\geq 0$. This implements the symmetric-cost
+detection-cost operating point [@martin1997det].
 
-# 4. Results
+# 6. Results
 
-**Clean dev** (n = 70):
+The submission ships one image system, two audio systems and three
+fusion variants — 6 result files in total.
+
+**Clean dev** (n = 70: 10 target / 60 non-target):
 
 | System | AUC | EER | TP | FP | FN | TN |
 |--------|----:|----:|---:|---:|---:|---:|
@@ -178,7 +189,7 @@ implements the symmetric-cost detection-cost operating point
 | fusion_hybrid_image        | 1.000 |  0.00 % | 10 | 0 | 0 | 60 |
 | fusion_3way                | 1.000 |  0.00 % | 10 | 0 | 0 | 60 |
 
-**Stress dev** (n = 170):
+**Stress dev** (n = 170: 50 target / 120 non-target):
 
 | System | AUC | EER | TP | FP | FN | TN |
 |--------|----:|----:|---:|---:|---:|---:|
@@ -189,47 +200,43 @@ implements the symmetric-cost detection-cost operating point
 | fusion_hybrid_image        | 0.875 | 20.42 % | 50 | 107 |  0 |  13 |
 | fusion_3way                | 0.860 | 21.83 % | 35 |  15 | 15 | 105 |
 
-**Eval set** (n = 1346, no labels): predicted-target counts are 127
-(image_logreg), 153 (audio_logreg), 139 (audio_gmm_hybrid), 142
-(fusion_logreg), 178 (fusion_hybrid_image), 139 (fusion_3way). DET curves
-[@martin1997det] at `artifacts/curves*.png` are preferred to ROC because
-their log-deviate axes spread the high-performance region that AUC
-saturation collapses into a corner.
+On the unlabelled eval set (n = 1346), predicted-target counts under
+the threshold-zero rule are 127 (image_logreg), 153 (audio_logreg),
+139 (audio_gmm_hybrid), 142 (fusion_logreg), 178 (fusion_hybrid_image)
+and 139 (fusion_3way). DET curves [@martin1997det] are saved at
+`artifacts/curves*.png`; we prefer DET over ROC because its
+log-deviate axes spread the high-performance region that AUC
+saturation collapses into the corner of the ROC.
 
-All three fusion variants saturate clean dev. Stress dev separates them
-clearly: `fusion_hybrid_image` maximises AUC (0.875); `fusion_3way` is
-the only system whose stress confusion matrix is balanced (precision 0.70
-versus 0.31 for the alternatives), trading a small AUC decrement for
-substantial precision gain. Under an operating point that penalises false
-positives more than the assignment's symmetric costs, `fusion_3way` is the
-strongest single submission.
+All three fusion variants saturate clean dev. Stress dev separates
+them clearly: `fusion_hybrid_image` maximises AUC (0.875);
+`fusion_3way` is the only system whose stress confusion matrix is
+balanced (precision 0.70 versus 0.31 for the alternatives), trading a
+small AUC decrement for substantial precision gain. Under an operating
+point that penalises false positives more strongly than the
+assignment's symmetric costs, `fusion_3way` would be the strongest
+single submission.
 
-# 5. Discussion
+# 7. Discussion
 
-The most surprising finding is the *clean–stress inversion* in the audio
-progression: the simple syllabus baseline (no VAD, no CMVN) handles stress
-substantially better than the production preprocessed pipeline. The
-mechanism is that the production VAD trims every frame on heavily
-attenuated audio (161 of 170 stress samples and 79 of 1346 eval samples
-produce all-zero feature vectors); without VAD, the attenuated signal is
-still scored on its remaining content. The hybrid fallback recovers the
-baseline's stress robustness and additionally fixes a subtle
-training-data contamination — 121 of 1112 augmented training utterances
-also extract to zero vectors, with the target class disproportionately
-affected (81 zero-frame target augmentations vs. 40 non-target), causing
-the model to learn a small "zero $\Rightarrow$ target" correlation as a
-class-asymmetric augmentation artefact. The hybrid short-circuits this
-spurious association at scoring time.
+The most surprising finding is the *clean–stress inversion* in the
+audio progression: the simple syllabus baseline (no VAD, no CMVN)
+handles the stress split substantially better than the production
+preprocessed pipeline does. The mechanism is that the production VAD
+trims every frame on heavily attenuated audio (161 of 170 stress
+samples and 79 of 1346 eval samples produce all-zero feature vectors);
+without VAD, the attenuated signal is still scored on its remaining
+content. The hybrid fallback recovers the baseline's stress robustness
+on the GMM-UBM path while preserving clean-dev saturation. We did not
+attempt to remove or retune the VAD on the LogReg path because
+disabling it costs ~35 AUC points on clean dev, and a routing fix
+restricted to the small known-degenerate slice is a smaller
+intervention than a full pipeline retune. A from-scratch convolutional
+network was ruled out for reasons analogous to i-vectors: a small CNN
+(~50 k parameters) needs an order of magnitude more target examples
+than the 320 augmented samples we have.
 
-Several simplifications were forced by the data scale. We did not attempt
-i-vector front-end factor analysis [@dehak2011ivector] — the standard
-upgrade over GMM-UBM — because it requires hundreds of background speakers
-for the total-variability matrix to be estimable, whereas our pool has 19
-distinct non-target speakers. A from-scratch convolutional network was
-ruled out for analogous reasons: a small CNN (~50 k parameters) needs
-order-of-magnitude more target examples than our 320 augmented samples.
-
-# 6. Reproduction
+# 8. Reproduction
 
 ```bash
 uv run scripts/augment_dataset.py --config configs/augment_audio.toml
@@ -247,7 +254,8 @@ uv run scripts/fusion_hybrid_image.py
 uv run scripts/fusion_3way.py
 ```
 
-All randomness is seeded; reproduction is deterministic from a fixed seed.
+All randomness is seeded; reproduction is deterministic from a fixed
+seed.
 
 # References
 

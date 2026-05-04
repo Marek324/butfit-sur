@@ -8,32 +8,21 @@ geometry: margin=2cm
 fontsize: 10pt
 ---
 
-# 1. Data and Augmentation
+# 1. Augmentation
 
-The supplied splits are session-disjoint for the target (train holds
-*m431* sessions 01–02, dev holds session 03) and speaker-disjoint for
-the impostors (13 speakers in train, 6 distinct speakers in dev),
-which pre-stresses generalisation to unseen identities and an unseen
-recording session of the target. The remainder of this report traces
-each per-modality system from the syllabus baseline to its production
-form by changing one design choice per step, so individual metric
-deltas are attributable to specific decisions.
-
-Augmentation is performed once, offline (`scripts/augment_dataset.py`),
-producing `dataset/*_aug` directories that the trainer enumerates as
-ordinary samples. Audio augmentation applies time stretch (0.9–1.1×),
-gain (±6 dB), polarity flip ($p=0.5$), peaking equalisation (±3 dB at
-200–4000 Hz) and additive white Gaussian noise (SNR 15–30 dB). Image
-augmentation applies horizontal flip ($p=0.5$), rotation (±10°),
-translation (±5 %), brightness and contrast scaling (0.85–1.15×) and
-per-pixel WGN ($\sigma\in[0,0.04]$). Vertical flip and hue rotation are
-excluded because faces are not vertically symmetric and skin tone is
-identity-relevant. The augmentation count is 15× per target sample and
-5× per non-target, an explicit asymmetry, since the target class has
-only 30 base utterances total. Class imbalance is handled at the loss
-level via `class_weight='balanced'`, so the
-trained classifier intercept satisfies $P(\text{target}\mid x)=0.5$ at
-logit zero regardless of the empirical training ratio.
+The training pool is small (30 base paired stems of *m431* across two
+sessions, ~190 non-target stems from disjoint speakers) and the
+assignment warns the eval set will contain input-quality variations not
+seen at training. Offline augmentation (`scripts/augment_dataset.py`)
+addresses both: it enlarges the effective training set and regularises
+against acoustic and visual distortions, producing `dataset/*_aug`
+directories that the trainer enumerates as ordinary samples. Audio
+augmentation applies time stretch (0.9–1.1×), gain (±6 dB), polarity
+flip ($p=0.5$), peaking EQ (±3 dB at 200–4000 Hz) and additive WGN
+(SNR 15–30 dB); image augmentation applies horizontal flip ($p=0.5$),
+rotation (±10°), translation (±5 %), brightness and contrast scaling
+(0.85–1.15×) and per-pixel WGN ($\sigma\in[0,0.04]$). Each base target
+sample receives 15 augmented variants and each non-target receives 5.
 
 # 2. Evaluation Metrics
 
@@ -167,29 +156,16 @@ frame-level GMM likelihoods are structurally different objects.
 
 # 6. Validation Strategy
 
-The clean `*_dev` split (n=70) is the primary diagnostic. To probe
-generalisation under input degradation we built a *stress* dev: the
-same dev samples re-augmented with a *disjoint* envelope (gain $-15$
-to $-8$ dB, SNR 3–13 dB, peaking EQ $-7$ to $-4$ dB at 4500–7500 Hz,
-time-stretch 0.78–0.88, image brightness 0.45–0.70, per-pixel noise
-$\sigma\in[0,0.10]$), yielding 50 target / 120 non-target stress samples.
-Disjointness converts each stress sample from interpolation to
-extrapolation under the trained model.
-
-We also ran a 2-fold leave-one-target-session-out session-grouped
-cross-validation (`scripts/cv_session_check.py`) on the training pool.
-Image AUC stays at 0.982 across folds; audio AUC drops to 0.789,
-confirming image features are session-invariant and audio is
-session-sensitive, which motivates using *both* available target
-sessions (01 and 02) for production training.
-
-The 50/50-prior decision rule is enforced in two places: every
-classifier sets `class_weight='balanced'` (equalising effective
-per-class loss mass during training, so the trained intercept
-satisfies $P(\text{target}\mid x)=0.5$ at logit zero); and every config
-sets `output.hard_threshold_logit = 0.0`, so the hard decision is
-$\mathrm{score}\geq 0$. This implements the symmetric-cost
-detection-cost operating point [6].
+Clean `*_dev` (n=70) saturates for image and fusion, so variant
+selection ran on a *stress* dev built by re-augmenting dev with a
+*disjoint* envelope (gain $-15$ to $-8$ dB, SNR 3–13 dB, time-stretch
+0.78–0.88, image brightness 0.45–0.70, per-pixel noise $\sigma\in[0,0.10]$),
+which converts each sample from interpolation to extrapolation under
+the trained model. Each variant in the per-modality sweeps was
+promoted to production on its stress AUC, with stress EER and
+threshold-zero confusion as tiebreakers. The 50/50-prior decision
+rule [6] is enforced at training (`class_weight='balanced'`) and
+inference (`hard_threshold_logit = 0.0`).
 
 # 7. Results
 

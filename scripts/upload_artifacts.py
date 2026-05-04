@@ -1,4 +1,3 @@
-"""Upload artifacts and cache to the Hugging Face Hub."""
 import argparse
 import os
 import sys

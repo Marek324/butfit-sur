@@ -16,7 +16,6 @@ from config import load_config  # noqa: E402
 from experiments import run_experiment  # noqa: E402
 
 def set_seed(seed: int) -> None:
-    """Locks down randomness for reproducible experiments."""
     random.seed(seed)
     np.random.seed(seed)
 

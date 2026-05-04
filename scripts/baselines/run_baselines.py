@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-"""
-Run the teacher's IKR-syllabus baselines verbatim on our clean train/dev
-split, print metrics in the same format as our production systems.
-
-Image baseline: PCA(D=21) on flattened pixels -> generative Gaussian linear
-classifier -> 2 IRLS-style logistic regression refinement steps.
-
-Audio baseline: 13-d MFCC frames (no VAD, no CMVN, course's mfcc()) -> two
-independent GMMs (M=30 each, diagonal cov, 40 EM iterations) ->
-per-utterance log-likelihood ratio with prior P_t = 0.5.
-"""
-
-from __future__ import annotations
-
 import json
 import sys
 import time
@@ -70,7 +56,6 @@ def _print_metrics(name: str, y: np.ndarray, s: np.ndarray, thr: float = 0.0) ->
 # ---------------------------- IMAGE ----------------------------
 
 def _flatten_pngs(d: dict) -> np.ndarray:
-    """Flatten png2fea output. Handles both 2D and 3D (RGB) imread results."""
     rows = []
     for v in d.values():
         if v.ndim == 3:

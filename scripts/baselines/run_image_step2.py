@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""
-Image progression step 2: HOG features + same classifier as the teacher
-baseline (Gaussian LDA + 2 IRLS refinements). Isolates the
-features-vs-pixels change at fixed classifier.
-"""
-from __future__ import annotations
-
 import json
 import sys
 from pathlib import Path

@@ -1,20 +1,4 @@
 #!/usr/bin/env python3
-"""
-Run all progression steps (image + audio) on clean dev, stress dev, and
-eval. Reports AUC + EER for the labelled splits and predicted-target
-count for the unlabelled eval set.
-
-Image: pixel-PCA(21) -> LDA+IRLS  /  HOG-PCA(21) -> LDA+IRLS  /
-       HOG -> balanced LogReg (no aug)  /  production (HOG + LogReg + aug).
-Audio: course MFCC + 2 GMMs (M=30)  /  + VAD + CMVN  /
-       production GMM-UBM (already in artifacts/audio_gmm_ubm_map_free).
-
-Single script so the same train/dev/eval enumeration is shared across all
-variants and the report is one consolidated table.
-"""
-
-from __future__ import annotations
-
 import json
 import sys
 import time
@@ -69,7 +53,6 @@ def _eval_count(s, thr=0.0) -> int:
 # ---------------- IMAGE ----------------
 
 def _to_gray80(v):
-    """Sum over channels (matches teacher's recipe), resize to 80x80 if needed."""
     from skimage.transform import resize
     if v.ndim == 3:
         v = v.sum(axis=2)
@@ -106,7 +89,6 @@ def _pca_fit_apply(X_train, *Xs, D=21):
 
 
 def _train_baseline_classifier(Xp, T):
-    """Gaussian LDA + 2 IRLS refinements as in the teacher's code."""
     w, w0, _ = train_generative_linear_classifier(Xp, T)
     for _ in range(2):
         w, w0 = train_linear_logistic_regression(Xp, T, w, w0)

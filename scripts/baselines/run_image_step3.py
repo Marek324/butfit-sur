@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""
-Image progression step 3: HOG features + balanced LogReg (C=0.1, L2) on
-the un-augmented training pool. Isolates the classifier-and-regularization
-change relative to step 2 (which broke due to singular Hessian on
-2916-d HOG with 152 training samples).
-"""
-from __future__ import annotations
-
 import json
 import sys
 from pathlib import Path

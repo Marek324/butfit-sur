@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import tomllib
 from dataclasses import MISSING, dataclass, field, fields, is_dataclass
 from pathlib import Path

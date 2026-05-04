@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-"""
-Audio progression step 2: course's MFCC + simple energy VAD + per-utterance
-CMVN, then the same 2-GMM (M=30, 40 EM iters) classifier as the teacher
-baseline. Isolates the preprocessing change at fixed model architecture.
-"""
-
-from __future__ import annotations
-
 import json
 import sys
 import time
@@ -38,7 +29,6 @@ HOP = WINDOW - NOVERLAP
 
 
 def _frame_log_energy(s: np.ndarray) -> np.ndarray:
-    """Per-frame log-energy aligned to course mfcc framing."""
     if s.shape[0] < WINDOW:
         return np.zeros(0)
     fr = framing(s.astype(np.float64), WINDOW, HOP)
@@ -48,7 +38,6 @@ def _frame_log_energy(s: np.ndarray) -> np.ndarray:
 
 
 def _vad_mask(s: np.ndarray, margin_db: float = 8.0, noise_pct: float = 10.0) -> np.ndarray:
-    """Energy-relative VAD on course-aligned frames."""
     e = _frame_log_energy(s)
     if e.size == 0:
         return np.zeros(0, dtype=bool)

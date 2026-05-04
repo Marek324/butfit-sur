@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""
-Image progression step 2 (fixed): HOG features → PCA(D=21) → Gaussian LDA
-+ 2 IRLS refinements. Same classifier as step 1; only the feature
-extractor changes (pixels -> HOG). Keeps the dimensionality the original
-classifier was designed for, so the experiment isolates "pixels vs HOG"
-cleanly.
-"""
-from __future__ import annotations
-
 import json
 import sys
 from pathlib import Path

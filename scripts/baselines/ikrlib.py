@@ -1,9 +1,3 @@
-"""
-ikrlib.py - course-provided utility library, copied verbatim from the SUR
-syllabus. Used here only to evaluate the teacher's baseline systems against
-our production pipeline. Not part of the submitted system.
-"""
-
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import mpl_toolkits.mplot3d

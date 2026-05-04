@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import numpy as np
 from skimage import color
 from skimage.feature import hog

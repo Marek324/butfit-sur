@@ -92,15 +92,70 @@ header.title .d { font-size: 9pt; margin-top: 0.2em; color: #444; }
 h1 { font-size: 13pt; margin-top: 0.8em; }
 h2 { font-size: 12pt; margin-top: 0.6em; }
 h3 { font-size: 11pt; margin-top: 0.4em; }
-table { border-collapse: collapse; margin: 0.5em 0; font-size: 9pt; }
+table { border-collapse: collapse; margin: 0.6em auto; font-size: 9pt; }
 th, td { border: 1px solid #777; padding: 2px 6px; }
 th { background: #eee; }
 pre, code { font-family: monospace; font-size: 8.5pt; }
 pre { background: #f4f4f4; padding: 4px 6px; }
+.math { font-style: italic; font-family: serif; }
+.mathblock { font-style: italic; text-align: center; margin: 0.4em 0; }
+img { max-width: 100%; display: block; margin: 0.4em auto; }
+p:has(img) { text-align: center; margin: 0.5em 0; }
+img + em, .figcap { display: block; text-align: center; font-size: 8.5pt;
+                    color: #444; margin-top: -0.2em; }
 """
 
 
+_LATEX_SYMBOLS = {
+    r"\sigma": "σ", r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ",
+    r"\tau": "τ", r"\mu": "μ", r"\lambda": "λ", r"\pi": "π", r"\theta": "θ",
+    r"\phi": "ϕ", r"\rho": "ρ", r"\epsilon": "ε", r"\omega": "ω",
+    r"\to": "→", r"\Rightarrow": "⇒", r"\Leftarrow": "⇐",
+    r"\in": "∈", r"\notin": "∉",
+    r"\approx": "≈", r"\geq": "≥", r"\leq": "≤", r"\neq": "≠",
+    r"\cdot": "·", r"\times": "×", r"\pm": "±",
+    r"\mid": "|", r"\,": " ", r"\;": " ", r"\:": " ", r"\!": "",
+    r"\log": "log", r"\ln": "ln", r"\exp": "exp",
+    r"\sum": "Σ", r"\prod": "∏", r"\int": "∫",
+    r"\infty": "∞",
+    r"\{": "{", r"\}": "}",
+    r"\_": "_",
+}
+
+_SUB_DIGITS = {"0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
+               "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉"}
+
+
+def _convert_latex_math(s: str) -> str:
+    import re
+
+    s = re.sub(r"\\(?:text|mathrm)\{([^{}]*)\}", r"\1", s)
+    for k, v in sorted(_LATEX_SYMBOLS.items(), key=lambda kv: -len(kv[0])):
+        s = s.replace(k, v)
+    s = re.sub(r"\^\{([^{}]*)\}", lambda m: "^(" + m.group(1) + ")", s)
+    s = re.sub(r"_(\d)", lambda m: _SUB_DIGITS[m.group(1)], s)
+    s = re.sub(r"_\{([^{}]*)\}", lambda m: "_" + m.group(1), s)
+    s = re.sub(r"_([A-Za-z])", r"_\1", s)
+    return s.strip()
+
+
+def _preprocess_math(text: str) -> str:
+    import re
+
+    def repl_block(m: "re.Match[str]") -> str:
+        return f"<div class='mathblock'>{_convert_latex_math(m.group(1))}</div>"
+
+    def repl_inline(m: "re.Match[str]") -> str:
+        return f"<span class='math'>{_convert_latex_math(m.group(1))}</span>"
+
+    text = re.sub(r"\$\$([^$]+)\$\$", repl_block, text, flags=re.DOTALL)
+    text = re.sub(r"(?<!\\)\$([^$\n]+?)\$", repl_inline, text)
+    return text
+
+
 def _parse_yaml_front_matter(text: str) -> tuple[dict, str]:
+    import re
+
     if not text.startswith("---"):
         return {}, text
     end = text.find("---", 3)
@@ -110,19 +165,21 @@ def _parse_yaml_front_matter(text: str) -> tuple[dict, str]:
     body = text[end + 3 :].lstrip()
     meta: dict[str, list[str] | str] = {}
     current_key: str | None = None
+    list_re = re.compile(r"^\s*-\s+(.*)$")
     for raw in fm.splitlines():
         line = raw.rstrip()
         if not line.strip():
             continue
-        if line.startswith(("  - ", "- ")):
-            value = line.split("- ", 1)[1].strip().strip('"').strip("'")
+        m = list_re.match(line)
+        if m:
+            value = m.group(1).strip().strip('"').strip("'")
             if current_key is None:
                 continue
             existing = meta.get(current_key)
             if isinstance(existing, list):
                 existing.append(value)
             else:
-                meta[current_key] = [value] if existing is None else [existing, value]
+                meta[current_key] = [value] if existing in (None, "", []) else [existing, value]
             continue
         if ":" in line:
             key, _, value = line.partition(":")
@@ -162,10 +219,18 @@ def render_md_to_pdf(md_path: Path, pdf_path: Path) -> None:
     import markdown
     from weasyprint import HTML
 
+    import re
+
     text = md_path.read_text()
     meta, body = _parse_yaml_front_matter(text)
     title_html = _title_block_html(meta)
+    body = _preprocess_math(body)
     html_body = markdown.markdown(body, extensions=["tables", "fenced_code"])
+    html_body = re.sub(
+        r'(<img[^>]*?)(\s*/?>)\{\s*width\s*=\s*(\d+%?)\s*\}',
+        lambda m: f'{m.group(1)} style="width:{m.group(3)};max-width:100%"{m.group(2)}',
+        html_body,
+    )
     full = (
         "<!doctype html><html><head><meta charset='utf-8'>"
         f"<style>{PDF_CSS}</style></head><body>"

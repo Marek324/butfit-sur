@@ -1,8 +1,8 @@
 ---
 title: "SUR 2025/2026 Project"
 author:
-  - "Marek Hric (xhricma00)"
-  - "Jakub Komanický (xkomanj00)"
+ - "Marek Hric (xhricma00)"
+ - "Jakub Komanický (xkomanj00)"
 date: "2026-05-04"
 geometry: margin=2cm
 fontsize: 10pt
@@ -29,16 +29,35 @@ translation (±5 %), brightness and contrast scaling (0.85–1.15×) and
 per-pixel WGN ($\sigma\in[0,0.04]$). Vertical flip and hue rotation are
 excluded because faces are not vertically symmetric and skin tone is
 identity-relevant. The augmentation count is 15× per target sample and
-5× per non-target — an explicit asymmetry, since the target class has
+5× per non-target, an explicit asymmetry, since the target class has
 only 30 base utterances total. Class imbalance is handled at the loss
-level via `class_weight='balanced'` [@pedregosa2011scikit], so the
+level via `class_weight='balanced'`, so the
 trained classifier intercept satisfies $P(\text{target}\mid x)=0.5$ at
 logit zero regardless of the empirical training ratio.
 
-# 2. Image System
+# 2. Evaluation Metrics
+
+Four quantities are reported throughout. **AUC** is the primary
+rank statistic, threshold-free and robust to class imbalance; most
+variant-selection decisions (audio feature subsets, image
+regularisation, GMM-UBM mixture counts) were made on AUC.
+**Equal Error Rate (EER) and the EER threshold** summarise the
+symmetric-cost operating point under prior 0.5; drift of the EER
+threshold away from zero flags miscalibration, and we rejected the
+MAP-adapted GMM-UBM variant on this signal alone (its EER threshold
+sat at $+0.25$ across the entire $\tau$ sweep). **Confusion at
+$\mathrm{logit} = 0$** (TP/FP/FN/TN) gives the operationally relevant
+quantities under the assignment's hard rule. **Precision and F$_1$**
+become decisive when stress-dev separates the fusion variants:
+`fusion_3way` reaches precision 0.70 and F$_1$ = 0.70 on stress dev
+versus 0.31 / 0.47 for the more recall-favouring fusions, which is
+what motivates keeping it in the submitted lineup despite a slightly
+lower stress AUC than `fusion_hybrid_image`.
+
+# 3. Image System
 
 Image features are 9-bin Histograms of Oriented Gradients
-[@dalal2005hog] over 8×8-pixel cells with 2×2-cell L2-Hys normalised
+[1] over 8×8-pixel cells with 2×2-cell L2-Hys normalised
 blocks on 80×80 grayscale crops, yielding 2916-d vectors. A balanced
 logistic regression with L2 regularisation ($C=0.1$) classifies them.
 Hard decisions threshold $\mathrm{decision\_function}$ at zero. The
@@ -46,37 +65,36 @@ progression from the syllabus baseline isolates three design changes:
 
 | Step | Description | AUC | EER |
 |------|-------------|----:|----:|
-| 1 | Baseline: pixels → PCA(D=21) → Gaussian LDA + 2 IRLS                    | 0.943 | 20.00 % |
-| 2 | HOG → PCA(D=21) → Gaussian LDA + 2 IRLS                                 | 0.977 |  9.17 % |
-| 3 | HOG (full 2916-d) → balanced LogReg, $C=0.1$, no augmentation          | 0.903 | 21.67 % |
-| 4 | + offline augmentation (production)                                     | 1.000 |  0.00 % |
+| 1 | Baseline: pixels → PCA(D=21) → Gaussian LDA + 2 IRLS | 0.943 | 20.00 % |
+| 2 | HOG → PCA(D=21) → Gaussian LDA + 2 IRLS | 0.977 | 9.17 % |
+| 3 | HOG (full 2916-d) → balanced LogReg, $C=0.1$, no augmentation | 0.903 | 21.67 % |
+| 4 | + offline augmentation (production) | 1.000 | 0.00 % |
 
 Step 1→2 isolates the HOG vs. raw-pixel feature gain at fixed
 dimensionality. Step 2→3 is a *regression*: dropping PCA in favour of
 full-dimensional HOG with L2 leaves the threshold-zero hard rule
 mis-calibrated at only 10 target training images. Step 3→4 shows that
-augmentation is what makes the high-dimensional architecture viable —
+augmentation is what makes the high-dimensional architecture viable;
 full-dimensional + L2 in isolation is worse than the PCA-bridged
 baseline classifier of step 2.
 
-# 3. Audio System
+# 4. Audio System
 
 Both audio systems share the same frontend: an energy + zero-crossing-rate
-voice activity detector (VAD), 13 mel-frequency cepstral coefficients
-[@davis1980mfcc] at 25 ms / 10 ms framing via `librosa`
-[@mcfee2015librosa] with per-utterance cepstral mean–variance
-normalisation, and probabilistic-YIN F$_0$ estimation [@mauch2014pyin]
-over voiced frames in 60–400 Hz. From the F$_0$ track and frame energies
+voice activity detector (VAD), 13 mel-frequency cepstral coefficients [2]
+at 25 ms / 10 ms framing with per-utterance cepstral mean–variance
+normalisation, and probabilistic-YIN F$_0$ estimation [3] over voiced
+frames in 60–400 Hz. From the F$_0$ track and frame energies
 we compute five prosodic statistics ($\log F_0$ mean and standard
 deviation, jitter, shimmer, voicing ratio).
 
-**Path A — aggregated features and logistic regression.** The 5
+**Path A, aggregated features and logistic regression.** The 5
 prosodic statistics and the 13 MFCC means form an 18-d utterance-level
 vector classified by balanced LogReg ($C=1.0$). This is shipped as
 `audio_logreg.txt`.
 
-**Path B — Gaussian Mixture Model with universal background, MAP-free.**
-Following [@reynolds2000gmmubm] we fit a 16-mixture diagonal-covariance
+**Path B, Gaussian Mixture Model with universal background, MAP-free.**
+Following [4] we fit a 16-mixture diagonal-covariance
 universal background model (UBM) on non-target frames and a 4-mixture
 diagonal-covariance target GMM on *m431* frames, *independently* by EM.
 We chose MAP-free over MAP adaptation because ~32 k augmented target
@@ -86,8 +104,8 @@ $\tau\in\{5, 10, 20, 100, 500, 2000, 10000\}$ produced an AUC plateau
 of 0.98 with the threshold-zero hard rule miscalibrated (EER threshold
 drifted to $+0.25$). The per-utterance score is the frame-averaged
 log-likelihood ratio. We did not attempt i-vector front-end factor
-analysis [@dehak2011ivector] — the standard upgrade over GMM-UBM —
-because it requires hundreds of background speakers for the
+analysis [5], the standard upgrade over GMM-UBM, because it requires
+hundreds of background speakers for the
 total-variability matrix to be estimable, whereas our pool has 19
 distinct non-target speakers.
 
@@ -119,17 +137,17 @@ The audio progression covers both clean and stress development splits:
 
 | Step | Description | Clean AUC | Stress AUC |
 |------|-------------|----------:|-----------:|
-| 1 | Baseline: course MFCC + 2 GMMs M=30 (no VAD, no CMVN)              | 0.978 | 0.799 |
-| 2 | + frame-energy VAD + per-utt CMVN, same 2 GMMs M=30                | 1.000 | 0.730 |
-| 3 | Production GMM-UBM (MAP-free, sentinel for VAD-empty)              | 0.997 | 0.463 |
-| 4 | Hybrid VAD-on/off (production)                                     | 0.997 | **0.870** |
+| 1 | Baseline: course MFCC + 2 GMMs M=30 (no VAD, no CMVN) | 0.978 | 0.799 |
+| 2 | + frame-energy VAD + per-utt CMVN, same 2 GMMs M=30 | 1.000 | 0.730 |
+| 3 | Production GMM-UBM (MAP-free, sentinel for VAD-empty) | 0.997 | 0.463 |
+| 4 | Hybrid VAD-on/off (production) | 0.997 | **0.870** |
 
 VAD and CMVN saturate clean dev (steps 1→2) but degrade the stress
 split because they introduce the failure mode that step 4 must repair.
 The hybrid recovers the baseline's stress robustness without
 sacrificing clean-dev performance.
 
-# 4. Multimodal Fusion
+# 5. Multimodal Fusion
 
 Fusion is performed at the score level. For each per-modality system,
 dev-set scores are z-normalised; a balanced logistic regression is
@@ -147,7 +165,7 @@ z(\text{image}))$. The three-way variant tests whether the two audio
 paths capture complementary signal, since aggregated 18-d features and
 frame-level GMM likelihoods are structurally different objects.
 
-# 5. Validation Strategy
+# 6. Validation Strategy
 
 The clean `*_dev` split (n=70) is the primary diagnostic. To probe
 generalisation under input degradation we built a *stress* dev: the
@@ -160,7 +178,7 @@ extrapolation under the trained model.
 
 We also ran a 2-fold leave-one-target-session-out session-grouped
 cross-validation (`scripts/cv_session_check.py`) on the training pool.
-Image AUC stays at 0.982 across folds; audio AUC drops to 0.789 —
+Image AUC stays at 0.982 across folds; audio AUC drops to 0.789,
 confirming image features are session-invariant and audio is
 session-sensitive, which motivates using *both* available target
 sessions (01 and 02) for production training.
@@ -171,39 +189,39 @@ per-class loss mass during training, so the trained intercept
 satisfies $P(\text{target}\mid x)=0.5$ at logit zero); and every config
 sets `output.hard_threshold_logit = 0.0`, so the hard decision is
 $\mathrm{score}\geq 0$. This implements the symmetric-cost
-detection-cost operating point [@martin1997det].
+detection-cost operating point [6].
 
-# 6. Results
+# 7. Results
 
 The submission ships one image system, two audio systems and three
-fusion variants — 6 result files in total.
+fusion variants, 6 result files in total.
 
 **Clean dev** (n = 70: 10 target / 60 non-target):
 
 | System | AUC | EER | TP | FP | FN | TN |
 |--------|----:|----:|---:|---:|---:|---:|
-| image_logreg               | 1.000 |  0.00 % | 10 | 1 | 0 | 59 |
-| audio_logreg               | 0.983 |  3.33 % |  7 | 0 | 3 | 60 |
-| audio_gmm_hybrid           | 0.997 |  1.67 % |  9 | 0 | 1 | 60 |
-| fusion_logreg              | 1.000 |  0.00 % | 10 | 0 | 0 | 60 |
-| fusion_hybrid_image        | 1.000 |  0.00 % | 10 | 0 | 0 | 60 |
-| fusion_3way                | 1.000 |  0.00 % | 10 | 0 | 0 | 60 |
+| image_logreg | 1.000 | 0.00 % | 10 | 1 | 0 | 59 |
+| audio_logreg | 0.983 | 3.33 % | 7 | 0 | 3 | 60 |
+| audio_gmm_hybrid | 0.997 | 1.67 % | 9 | 0 | 1 | 60 |
+| fusion_logreg | 1.000 | 0.00 % | 10 | 0 | 0 | 60 |
+| fusion_hybrid_image | 1.000 | 0.00 % | 10 | 0 | 0 | 60 |
+| fusion_3way | 1.000 | 0.00 % | 10 | 0 | 0 | 60 |
 
 **Stress dev** (n = 170: 50 target / 120 non-target):
 
 | System | AUC | EER | TP | FP | FN | TN |
 |--------|----:|----:|---:|---:|---:|---:|
-| image_logreg               | 0.607 | 40.00 % | 35 |  60 | 15 |  60 |
-| audio_logreg               | 0.521 | 47.08 % | 50 | 113 |  0 |   7 |
-| audio_gmm_hybrid           | 0.870 | 24.08 % | 47 |  69 |  3 |  51 |
-| fusion_logreg              | 0.625 | 39.17 % | 50 | 111 |  0 |   9 |
-| fusion_hybrid_image        | 0.875 | 20.42 % | 50 | 107 |  0 |  13 |
-| fusion_3way                | 0.860 | 21.83 % | 35 |  15 | 15 | 105 |
+| image_logreg | 0.607 | 40.00 % | 35 | 60 | 15 | 60 |
+| audio_logreg | 0.521 | 47.08 % | 50 | 113 | 0 | 7 |
+| audio_gmm_hybrid | 0.870 | 24.08 % | 47 | 69 | 3 | 51 |
+| fusion_logreg | 0.625 | 39.17 % | 50 | 111 | 0 | 9 |
+| fusion_hybrid_image | 0.875 | 20.42 % | 50 | 107 | 0 | 13 |
+| fusion_3way | 0.860 | 21.83 % | 35 | 15 | 15 | 105 |
 
 On the unlabelled eval set (n = 1346), predicted-target counts under
 the threshold-zero rule are 127 (image_logreg), 153 (audio_logreg),
 139 (audio_gmm_hybrid), 142 (fusion_logreg), 178 (fusion_hybrid_image)
-and 139 (fusion_3way). DET curves [@martin1997det] are saved at
+and 139 (fusion_3way). DET curves [6] are saved at
 `artifacts/curves*.png`; we prefer DET over ROC because its
 log-deviate axes spread the high-performance region that AUC
 saturation collapses into the corner of the ROC.
@@ -217,7 +235,7 @@ point that penalises false positives more strongly than the
 assignment's symmetric costs, `fusion_3way` would be the strongest
 single submission.
 
-# 7. Discussion
+# 8. Discussion
 
 The most surprising finding is the *clean–stress inversion* in the
 audio progression: the simple syllabus baseline (no VAD, no CMVN)
@@ -236,16 +254,16 @@ network was ruled out for reasons analogous to i-vectors: a small CNN
 (~50 k parameters) needs an order of magnitude more target examples
 than the 320 augmented samples we have.
 
-# 8. Reproduction
+# 9. Reproduction
 
 ```bash
 uv run scripts/augment_dataset.py --config configs/augment_audio.toml
 uv run scripts/augment_dataset.py --config configs/augment_image.toml
-uv run scripts/train.py    --config configs/audio_baseline.toml
-uv run scripts/train.py    --config configs/image_baseline.toml
-uv run scripts/train.py    --config configs/fusion_baseline.toml
-uv run scripts/evaluate.py --config configs/audio_baseline.toml  --split eval
-uv run scripts/evaluate.py --config configs/image_baseline.toml  --split eval
+uv run scripts/train.py --config configs/audio_baseline.toml
+uv run scripts/train.py --config configs/image_baseline.toml
+uv run scripts/train.py --config configs/fusion_baseline.toml
+uv run scripts/evaluate.py --config configs/audio_baseline.toml --split eval
+uv run scripts/evaluate.py --config configs/image_baseline.toml --split eval
 uv run scripts/evaluate.py --config configs/fusion_baseline.toml --split eval
 uv run scripts/audio_gmm_pipeline.py --mode map_free
 uv run scripts/audio_gmm_hybrid.py
@@ -259,60 +277,14 @@ seed.
 
 # References
 
-```bibtex
-@article{davis1980mfcc,
-  author={Davis, S. and Mermelstein, P.},
-  title={Comparison of Parametric Representations for Monosyllabic Word Recognition in Continuously Spoken Sentences},
-  journal={IEEE Transactions on Acoustics, Speech and Signal Processing},
-  volume={28}, number={4}, pages={357--366}, year={1980},
-  doi={10.1109/TASSP.1980.1163420}
-}
-@inproceedings{martin1997det,
-  author={Martin, A. and Doddington, G. and Kamm, T. and Ordowski, M. and Przybocki, M.},
-  title={The {DET} Curve in Assessment of Detection Task Performance},
-  booktitle={Proc. 5th European Conference on Speech Communication and Technology},
-  pages={1895--1898}, year={1997},
-  doi={10.21437/Eurospeech.1997-504}
-}
-@article{reynolds2000gmmubm,
-  author={Reynolds, D. A. and Quatieri, T. F. and Dunn, R. B.},
-  title={Speaker Verification Using Adapted {G}aussian Mixture Models},
-  journal={Digital Signal Processing},
-  volume={10}, number={1--3}, pages={19--41}, year={2000},
-  doi={10.1006/dspr.1999.0361}
-}
-@inproceedings{dalal2005hog,
-  author={Dalal, N. and Triggs, B.},
-  title={Histograms of Oriented Gradients for Human Detection},
-  booktitle={Proc. IEEE Conf.\ Computer Vision and Pattern Recognition (CVPR)},
-  pages={886--893}, year={2005},
-  doi={10.1109/CVPR.2005.177}
-}
-@article{pedregosa2011scikit,
-  author={Pedregosa, F. and others},
-  title={Scikit-learn: Machine Learning in {P}ython},
-  journal={Journal of Machine Learning Research},
-  volume={12}, pages={2825--2830}, year={2011}
-}
-@article{dehak2011ivector,
-  author={Dehak, N. and Kenny, P. J. and Dehak, R. and Dumouchel, P. and Ouellet, P.},
-  title={Front-End Factor Analysis for Speaker Verification},
-  journal={IEEE Transactions on Audio, Speech, and Language Processing},
-  volume={19}, number={4}, pages={788--798}, year={2011},
-  doi={10.1109/TASL.2010.2064307}
-}
-@inproceedings{mauch2014pyin,
-  author={Mauch, M. and Dixon, S.},
-  title={{pYIN}: A Fundamental Frequency Estimator Using Probabilistic Threshold Distributions},
-  booktitle={Proc. IEEE Int.\ Conf.\ Acoustics, Speech and Signal Processing (ICASSP)},
-  pages={659--663}, year={2014},
-  doi={10.1109/ICASSP.2014.6853678}
-}
-@inproceedings{mcfee2015librosa,
-  author={McFee, B. and Raffel, C. and Liang, D. and Ellis, D. P. W. and McVicar, M. and Battenberg, E. and Nieto, O.},
-  title={{librosa}: Audio and Music Signal Analysis in {Python}},
-  booktitle={Proc. 14th Python in Science Conference (SciPy)},
-  pages={18--24}, year={2015},
-  doi={10.25080/Majora-7b98e3ed-003}
-}
-```
+1. N. Dalal and B. Triggs, "Histograms of Oriented Gradients for Human Detection," in *Proc. IEEE Conf. Computer Vision and Pattern Recognition (CVPR)*, San Diego, USA, 2005, pp. 886–893. doi:10.1109/CVPR.2005.177.
+
+2. S. Davis and P. Mermelstein, "Comparison of Parametric Representations for Monosyllabic Word Recognition in Continuously Spoken Sentences," *IEEE Transactions on Acoustics, Speech and Signal Processing*, vol. 28, no. 4, pp. 357–366, 1980. doi:10.1109/TASSP.1980.1163420.
+
+3. M. Mauch and S. Dixon, "pYIN: A Fundamental Frequency Estimator Using Probabilistic Threshold Distributions," in *Proc. IEEE Int. Conf. Acoustics, Speech and Signal Processing (ICASSP)*, Florence, Italy, 2014, pp. 659–663. doi:10.1109/ICASSP.2014.6853678.
+
+4. D. A. Reynolds, T. F. Quatieri, and R. B. Dunn, "Speaker Verification Using Adapted Gaussian Mixture Models," *Digital Signal Processing*, vol. 10, no. 1–3, pp. 19–41, 2000. doi:10.1006/dspr.1999.0361.
+
+5. N. Dehak, P. J. Kenny, R. Dehak, P. Dumouchel, and P. Ouellet, "Front-End Factor Analysis for Speaker Verification," *IEEE Transactions on Audio, Speech, and Language Processing*, vol. 19, no. 4, pp. 788–798, 2011. doi:10.1109/TASL.2010.2064307.
+
+6. A. Martin, G. Doddington, T. Kamm, M. Ordowski, and M. Przybocki, "The DET Curve in Assessment of Detection Task Performance," in *Proc. 5th European Conference on Speech Communication and Technology (Eurospeech)*, Rhodes, Greece, 1997, pp. 1895–1898.

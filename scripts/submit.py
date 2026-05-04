@@ -10,6 +10,24 @@ MODALITY_HINTS = ("audio", "image", "fusion")
 EXCLUDED_DIRS = {"__pycache__"}
 EXCLUDED_SUFFIXES = {".pyc"}
 
+PRODUCTION_SCRIPTS = (
+    "augment_dataset.py",
+    "train.py",
+    "evaluate.py",
+    "audio_gmm_pipeline.py",
+    "audio_gmm_hybrid.py",
+    "fix_vad_empty.py",
+    "fusion_hybrid_image.py",
+    "fusion_3way.py",
+)
+PRODUCTION_CONFIGS = (
+    "audio_baseline.toml",
+    "image_baseline.toml",
+    "fusion_baseline.toml",
+    "augment_audio.toml",
+    "augment_image.toml",
+)
+
 
 def collect_src(src_dir: Path) -> list[tuple[Path, str]]:
     out: list[tuple[Path, str]] = []
@@ -22,6 +40,26 @@ def collect_src(src_dir: Path) -> list[tuple[Path, str]]:
             continue
         rel = path.relative_to(src_dir)
         out.append((path, f"SRC/{rel}"))
+    return out
+
+
+def collect_scripts(scripts_dir: Path) -> list[tuple[Path, str]]:
+    out: list[tuple[Path, str]] = []
+    for name in PRODUCTION_SCRIPTS:
+        p = scripts_dir / name
+        if not p.is_file():
+            raise SystemExit(f"required script missing: {p}")
+        out.append((p, f"SRC/scripts/{name}"))
+    return out
+
+
+def collect_configs(configs_dir: Path) -> list[tuple[Path, str]]:
+    out: list[tuple[Path, str]] = []
+    for name in PRODUCTION_CONFIGS:
+        p = configs_dir / name
+        if not p.is_file():
+            raise SystemExit(f"required config missing: {p}")
+        out.append((p, f"SRC/configs/{name}"))
     return out
 
 
@@ -48,6 +86,8 @@ def main() -> int:
     ap.add_argument("--results", type=Path, default=Path("results"))
     ap.add_argument("--docs", type=Path, default=Path("docs/dokumentace.pdf"))
     ap.add_argument("--src", type=Path, default=Path("src"))
+    ap.add_argument("--scripts-dir", type=Path, default=Path("scripts"))
+    ap.add_argument("--configs-dir", type=Path, default=Path("configs"))
     ap.add_argument("--out", type=Path, default=Path("submit.zip"))
     args = ap.parse_args()
 
@@ -87,6 +127,8 @@ def main() -> int:
         )
 
     src_entries = collect_src(args.src)
+    script_entries = collect_scripts(args.scripts_dir)
+    config_entries = collect_configs(args.configs_dir)
     pyproject = Path("pyproject.toml")
     if not pyproject.is_file():
         print(f"error: {pyproject} not found", file=sys.stderr)
@@ -100,13 +142,19 @@ def main() -> int:
         zf.writestr("SRC/requirements.txt", requirements)
         for path, arcname in src_entries:
             zf.write(path, arcname)
+        for path, arcname in script_entries:
+            zf.write(path, arcname)
+        for path, arcname in config_entries:
+            zf.write(path, arcname)
         zf.write(args.docs, args.docs.name)
 
     size_kb = args.out.stat().st_size / 1024
     print(f"Wrote {args.out} ({size_kb:.1f} KB)")
     print(f"  {len(result_files)} result file(s)")
     print(
-        f"  SRC/ with {len(src_entries)} source file(s) + pyproject.toml + requirements.txt"
+        f"  SRC/ with {len(src_entries)} source file(s) "
+        f"+ {len(script_entries)} script(s) + {len(config_entries)} config(s) "
+        f"+ pyproject.toml + requirements.txt"
     )
     print(f"  {args.docs.name}")
 

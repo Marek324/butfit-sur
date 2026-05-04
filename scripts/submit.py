@@ -21,11 +21,16 @@ PRODUCTION_SCRIPTS = (
     "fusion_3way.py",
 )
 PRODUCTION_CONFIGS = (
-    "audio_baseline.toml",
-    "image_baseline.toml",
-    "fusion_baseline.toml",
+    "audio.toml",
+    "audio_stress.toml",
+    "image.toml",
+    "image_stress.toml",
+    "fusion.toml",
+    "fusion_stress.toml",
     "augment_audio.toml",
     "augment_image.toml",
+    "augment_dev_audio.toml",
+    "augment_dev_image.toml",
 )
 
 

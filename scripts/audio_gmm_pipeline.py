@@ -94,7 +94,7 @@ def _apply_sentinel(scores: np.ndarray, frames_list: list[np.ndarray]) -> np.nda
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--audio-config", type=Path, default=Path("configs/audio_baseline.toml"))
+    ap.add_argument("--audio-config", type=Path, default=Path("configs/audio.toml"))
     ap.add_argument("--cache-root", type=Path, default=Path("artifacts/cache"))
     ap.add_argument(
         "--mode",
@@ -206,7 +206,7 @@ def main() -> int:
         "dev": _metrics_dict(metrics, metrics.confusion),
     }
 
-    stress_cfg_path = Path("configs/audio_baseline_stress.toml")
+    stress_cfg_path = Path("configs/audio_stress.toml")
     if stress_cfg_path.is_file():
         stress_cfg = load_config(stress_cfg_path)
         stress_samples = enumerate_split(stress_cfg.data.dev_dirs, extension=".wav")

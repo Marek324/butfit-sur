@@ -52,7 +52,7 @@ def _score_set(per_sample, model: GmmModel, sentinel: float | None = None):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--audio-config", type=Path, default=Path("configs/audio_baseline.toml"))
+    ap.add_argument("--audio-config", type=Path, default=Path("configs/audio.toml"))
     ap.add_argument("--cache-root", type=Path, default=Path("artifacts/cache"))
     ap.add_argument(
         "--production-model",
@@ -131,7 +131,7 @@ def main() -> int:
     metrics_dv = evaluate(s_dv, y_dv, threshold=0.0)
     print(format_metrics(metrics_dv))
 
-    stress_cfg_path = Path("configs/audio_baseline_stress.toml")
+    stress_cfg_path = Path("configs/audio_stress.toml")
     metrics_st = None
     if stress_cfg_path.is_file():
         print()

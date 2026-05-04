@@ -19,7 +19,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--artifacts", type=Path, default=Path("artifacts"))
     ap.add_argument(
-        "--fusion-config", type=Path, default=Path("configs/fusion_baseline.toml")
+        "--fusion-config", type=Path, default=Path("configs/fusion.toml")
     )
     ap.add_argument(
         "--output", type=Path, default=Path("artifacts/dev_error_correlation.png")

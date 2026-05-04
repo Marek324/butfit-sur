@@ -104,7 +104,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--artifacts", type=Path, default=Path("artifacts"))
     ap.add_argument(
-        "--fusion-config", type=Path, default=Path("configs/fusion_baseline.toml")
+        "--fusion-config", type=Path, default=Path("configs/fusion.toml")
     )
     ap.add_argument("--n-bins", type=int, default=10)
     ap.add_argument("--n-folds", type=int, default=5)

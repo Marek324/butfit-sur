@@ -53,8 +53,8 @@ def _confusion(s, y, thr=0.0):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--audio-config", type=Path, default=Path("configs/audio_baseline.toml"))
-    ap.add_argument("--image-config", type=Path, default=Path("configs/image_baseline.toml"))
+    ap.add_argument("--audio-config", type=Path, default=Path("configs/audio.toml"))
+    ap.add_argument("--image-config", type=Path, default=Path("configs/image.toml"))
     ap.add_argument("--cache-root", type=Path, default=Path("artifacts/cache"))
     ap.add_argument("--audio-logreg", type=Path,
                     default=Path("artifacts/audio_baseline_logreg/model.pkl"))
@@ -117,7 +117,7 @@ def main() -> int:
     cd = _confusion(fused_dev, y_dev)
     print(f"\nClean dev: AUC={auc_d:.4f}  EER={eer_d*100:.2f}%  TP/FP/FN/TN={cd}")
 
-    stress_cfg = load_config(Path("configs/audio_baseline_stress.toml"))
+    stress_cfg = load_config(Path("configs/audio_stress.toml"))
     audio_st = enumerate_split(stress_cfg.data.dev_dirs, ".wav")
     image_st = enumerate_split(stress_cfg.data.dev_dirs, ".png")
     assert [s.name for s in audio_st] == [s.name for s in image_st]

@@ -45,8 +45,8 @@ def _hybrid_audio_scores(samples, cache_root: Path, pre_hash: str,
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--audio-config", type=Path, default=Path("configs/audio_baseline.toml"))
-    ap.add_argument("--image-config", type=Path, default=Path("configs/image_baseline.toml"))
+    ap.add_argument("--audio-config", type=Path, default=Path("configs/audio.toml"))
+    ap.add_argument("--image-config", type=Path, default=Path("configs/image.toml"))
     ap.add_argument("--cache-root", type=Path, default=Path("artifacts/cache"))
     ap.add_argument("--prod-gmm", type=Path,
                     default=Path("artifacts/audio_gmm_ubm_map_free/model.pkl"))
@@ -107,7 +107,7 @@ def main() -> int:
     tn = int(((pred == 0) & (y_dev == 0)).sum())
     print(f"\nClean dev: AUC={auc:.4f}  EER={eer*100:.2f}%  TP={tp} FP={fp} FN={fn} TN={tn}")
 
-    stress_cfg_path = Path("configs/audio_baseline_stress.toml")
+    stress_cfg_path = Path("configs/audio_stress.toml")
     stress_metrics = None
     if stress_cfg_path.is_file():
         stress_cfg = load_config(stress_cfg_path)

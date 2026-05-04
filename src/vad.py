@@ -1,5 +1,3 @@
-"""Energy + ZCR voice activity detection. Pure DSP, no learned models."""
-
 from __future__ import annotations
 
 import numpy as np
@@ -59,15 +57,6 @@ def _smooth_runs(mask: np.ndarray, min_speech: int, min_silence: int) -> np.ndar
 
 
 def speech_mask(x: np.ndarray, sr: int, cfg: VadCfg) -> np.ndarray:
-    """Boolean mask, one entry per VAD hop. True = speech.
-
-    Hop length follows cfg.hop_ms (10 ms by default), so the mask aligns
-    directly with MFCC frames computed at the same hop.
-
-    `algorithm = "off"` returns an all-True mask — useful for ablation
-    experiments that test whether VAD is doing real work (e.g. filtering
-    boundary booms, breath noise, or silence) vs adding spurious filtering.
-    """
     if cfg.algorithm == "off":
         # Same number of frames the energy_zcr branch would produce, all True.
         flen = int(sr * cfg.frame_ms / 1000)

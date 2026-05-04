@@ -1,15 +1,3 @@
-"""Per-sample feature extraction with caching.
-
-Audio uses a 2-stage cache: a heavy pre-stage (pyin + MFCC + formants +
-centroid) keyed by params that affect the *content* of the intermediates, and
-a cheap final-vector stage keyed by the full feature config. Variants that
-change only `include` / `mfcc_n_means` re-aggregate from cached pre — ~10 ms
-per sample vs ~2 s for the full pyin run.
-
-Image uses a single-stage cache (HOG is fast enough that the staging would
-add more overhead than it saves).
-"""
-
 from __future__ import annotations
 
 import time
@@ -23,7 +11,6 @@ from data import Sample, load_png, load_wav_mono16k
 
 
 def feature_config_hash(cfg: Config, modality: str) -> str:
-    """Hash that uniquely keys the cached final feature vector for a modality."""
     if modality == "audio":
         return config_hash(cfg.audio.vad, cfg.audio.features)
     if modality == "image":
@@ -32,16 +19,14 @@ def feature_config_hash(cfg: Config, modality: str) -> str:
 
 
 def extract_one_audio(s: Sample, cfg: Config) -> np.ndarray:
-    """Full single-sample audio extraction (no cache). Used as a fallback when
-    the 2-stage cache is disabled."""
-    from audio_features import extract  # local import: librosa is heavy
+    from audio_features import extract 
 
     x, sr = load_wav_mono16k(s.path)
     return extract(x, sr, cfg.audio.vad, cfg.audio.features)
 
 
 def extract_one_image(s: Sample, cfg: Config) -> np.ndarray:
-    from image_features import extract  # local import: skimage is heavy
+    from image_features import extract 
 
     img = load_png(s.path, grayscale=cfg.image.features.grayscale)
     return extract(img, cfg.image.features)
@@ -68,11 +53,6 @@ def _per_sample_extract_cached(
 def _audio_two_stage_cached(
     sample: Sample, cfg: Config, vector_cache_path: Path
 ) -> np.ndarray:
-    """Audio extraction with separate caches for the heavy pre-stage (pyin +
-    MFCC + formants + centroid) and the cheap aggregation. Variant experiments
-    that change only `include` / `mfcc_n_means` re-aggregate from cached pre,
-    which is ~10 ms vs ~2 s for the full pipeline.
-    """
     from audio_features import (
         aggregate,
         extract_pre,
@@ -120,12 +100,6 @@ def extract_set(
     modality: str,
     progress: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, list[str], list[str | None]]:
-    """Build (X, y, names, speaker_ids) for `samples` under modality `modality`.
-
-    Pure base-feature extraction, served from the per-sample cache when enabled.
-    Augmented samples are produced offline by `scripts/augment_dataset.py` and
-    enter through the file-system enumeration like any other sample.
-    """
     if modality not in ("audio", "image"):
         raise ValueError(f"unsupported modality: {modality}")
 

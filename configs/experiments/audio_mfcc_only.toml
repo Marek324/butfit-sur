@@ -1,6 +1,5 @@
 # Audio experiment: drop the 5 prosodic features, use 13 CMVN-MFCC means
-# only. Tests whether MFCCs alone carry enough speaker signal — the
-# orthodox MFCC+GMM-UBM textbook approach uses MFCCs only too.
+# only. Tests whether MFCCs alone carry enough speaker signal
 
 name = "audio_exp_mfcc_only"
 modality = "audio"

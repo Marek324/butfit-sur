@@ -1,17 +1,4 @@
 #!/usr/bin/env python3
-"""How are audio and image errors correlated on dev? Tells us how much
-fusion can rescue per-modality mistakes.
-
-  uv run scripts/dev_error_correlation.py
-
-Loads audio + image production models, scores paired dev samples, computes:
-  - per-modality accuracy at logit=0
-  - 2×2 contingency: (audio correct? × image correct?) over the 70 dev samples
-  - Phi (φ) correlation of correctness — φ=0 means independent errors (best
-    case for score-level fusion); φ=1 means modalities make identical
-    errors and fusion can't help; φ<0 means complementary errors and fusion
-    has lots to gain.
-"""
 
 from __future__ import annotations
 
@@ -32,7 +19,7 @@ from experiments.runners import _score_paired  # noqa: E402
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--artifacts", type=Path, default=Path("artifacts"))
     ap.add_argument(
         "--fusion-config", type=Path, default=Path("configs/fusion_baseline.toml")
@@ -134,7 +121,7 @@ def main() -> int:
             )
     ax.set_title(
         f"Audio × Image correctness on dev (n={n})\n"
-        f"φ = {phi:+.3f} — fusion-rescuable: {n10 + n01}, unrescuable: {n00}"
+        f"φ = {phi:+.3f} - fusion-rescuable: {n10 + n01}, unrescuable: {n00}"
     )
     fig.colorbar(im, ax=ax, label="count")
     fig.tight_layout()

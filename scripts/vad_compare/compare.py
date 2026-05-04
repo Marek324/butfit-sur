@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""Compare Silero VAD vs energy+ZCR VAD on the SUR dataset.
-
-Treats Silero as the reference and reports per-split agreement metrics:
-    - mean speech ratio (each method, plus delta)
-    - frame-level precision / recall / F1 (energy_zcr vs silero)
-    - IoU of speech masks
-    - Cohen's kappa (chance-corrected agreement)
-
-Run after run_silero.py and run_energy_zcr.py.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -67,7 +56,7 @@ def split_of(rel_path: str) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument(
         "--per-file", action="store_true", help="print per-file metrics too"
     )

@@ -1,5 +1,5 @@
 # Image experiment: finer HOG cells (4×4 instead of 8×8) → 12996-d. Acts as
-# the overfitting control — high-capacity feature should saturate clean dev
+# the overfitting control - high-capacity feature should saturate clean dev
 # even more and likely degrade harder under stress dev.
 
 name = "image_exp_hog_finer"

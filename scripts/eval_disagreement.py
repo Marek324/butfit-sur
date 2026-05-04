@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""Per-segment hard-decision agreement breakdown across the 3 production
-result files (audio / image / fusion) on the eval set.
-
-  uv run scripts/eval_disagreement.py results/audio_logreg.txt \\
-      results/image_logreg.txt results/fusion_logreg.txt \\
-      --output artifacts/eval_disagreement.png
-
-Prints a 2×2×2 contingency table and a "fusion behavior" summary: when
-audio and image disagree, which one does fusion side with? When they agree,
-how often does fusion override the consensus?
-"""
 
 from __future__ import annotations
 
@@ -37,7 +26,7 @@ def _load(p: Path) -> tuple[list[str], np.ndarray, np.ndarray]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("audio", type=Path)
     ap.add_argument("image", type=Path)
     ap.add_argument("fusion", type=Path)
@@ -100,7 +89,7 @@ def main() -> int:
     print(f"    Fusion sides with audio: {fusion_with_audio}")
     print(f"    Fusion sides with image: {fusion_with_image}")
 
-    # Plot — stacked bars by (audio, image) consensus showing fusion outcome.
+    # Plot - stacked bars by (audio, image) consensus showing fusion outcome.
     fig, ax = plt.subplots(1, 1, figsize=(10, 5))
     consensus_keys = [
         ("both → non-target", (0, 0)),

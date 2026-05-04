@@ -1,11 +1,3 @@
-"""Write the assignment-format result file:
-
-    <segment_name> <score> <hard_decision>
-
-Plain ASCII, one row per segment, three space-separated columns.
-hard_decision = 1 (target) if score >= threshold else 0.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path

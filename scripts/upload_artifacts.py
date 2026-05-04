@@ -1,30 +1,6 @@
-"""Upload artifacts/ (feature cache + per-experiment runs) to HuggingFace.
-
-Default mode is additive — files on HF that no longer exist locally are kept.
-Pass ``--clean cache`` and/or ``--clean runs`` to delete remote files in those
-folders that aren't in the local copy.
-
-Folder map:
-  artifacts/cache/        → expensive feature cache (audio, audio_pre, image)
-  artifacts/<exp_name>/   → per-experiment run dirs (config, metrics, model, features)
-
-cache/ is uploaded via ``upload_large_folder`` because it holds tens of
-thousands of small ``.npy`` files — a single ``upload_folder`` commit exceeds
-HF's per-commit limit and returns 500. Run dirs are small and use
-``upload_folder`` (atomic, supports ``delete_patterns``).
-
-Plots (artifacts/*.png, artifacts/experiments/*.png) are skipped — regenerate
-locally from the run dirs.
-
-Examples:
-  python scripts/upload_artifacts.py                              # additive upload
-  python scripts/upload_artifacts.py --no-cache                   # skip cache/
-  python scripts/upload_artifacts.py --clean cache                # mirror cache/
-  python scripts/upload_artifacts.py --clean cache --clean runs
-  python scripts/upload_artifacts.py --clean cache --dry-run      # preview only
-"""
-
+"""Upload artifacts and cache to the Hugging Face Hub."""
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -36,6 +12,28 @@ REPO_TYPE = "model"
 ROOT = Path(__file__).resolve().parent.parent
 ARTIFACTS = ROOT / "artifacts"
 
+
+def _load_dotenv() -> None:
+    env_path = ROOT / ".env"
+    if not env_path.is_file():
+        return
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
+def _experiment_dirs() -> list[Path]:
+    if not ARTIFACTS.exists():
+        return []
+    return [
+        child for child in sorted(ARTIFACTS.iterdir())
+        if child.is_dir() and child.name not in RESERVED
+    ]
+
 # Top-level entries inside artifacts/ that are not per-experiment run dirs.
 RESERVED = {"cache", "experiments"}
 
@@ -44,25 +42,25 @@ CLEAN_TARGETS = {"cache", "runs"}
 
 RUN_ALLOW = ["config.toml", "metrics.json", "model.pkl", "*.npz"]
 
-
-def _experiment_dirs() -> list[Path]:
-    if not ARTIFACTS.exists():
-        return []
-    # Skip hidden dirs (e.g. ``.cache/`` created by upload_large_folder for resume state).
-    return [
-        c for c in sorted(ARTIFACTS.iterdir())
-        if c.is_dir() and c.name not in RESERVED and not c.name.startswith(".")
-    ]
+def _entries() -> list[tuple[Path, str, list[str] | None, str]]:
+    out: list[tuple[Path, str, list[str] | None, str]] = []
+    if (ARTIFACTS / "cache").exists():
+        out.append((ARTIFACTS / "cache", "cache", None, "cache"))
+    for child in sorted(ARTIFACTS.iterdir()) if ARTIFACTS.exists() else []:
+        if child.is_dir() and child.name not in RESERVED:
+            out.append((child, child.name, ["config.toml", "metrics.json", "model.pkl", "*.npz"], "runs"))
+    return out
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    _load_dotenv()
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--clean",
         action="append",
         default=[],
         choices=sorted(CLEAN_TARGETS),
-        help="Folder to mirror — remote files not present locally are deleted. "
+        help="Folder to mirror - remote files not present locally are deleted. "
              "Repeat to clean multiple folders.",
     )
     parser.add_argument(
@@ -88,9 +86,9 @@ def main() -> None:
 
     cache_dir = ARTIFACTS / "cache"
     if args.no_cache:
-        print("  cache/ — skipped (--no-cache)")
+        print("  cache/ - skipped (--no-cache)")
     elif not cache_dir.exists() or not any(cache_dir.iterdir()):
-        print("  cache/ — empty or missing, skipping")
+        print("  cache/ - empty or missing, skipping")
     else:
         if "cache" in clean_set:
             print("  Deleting remote cache/ (clean mode) …")
@@ -113,7 +111,7 @@ def main() -> None:
 
     for child in _experiment_dirs():
         if not any(child.iterdir()):
-            print(f"  {child.name}/ — empty, skipping")
+            print(f"  {child.name}/ - empty, skipping")
             continue
 
         clean_this = "runs" in clean_set

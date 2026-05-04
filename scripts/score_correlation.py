@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""Per-segment score correlation across modalities (eval set).
-
-  uv run scripts/score_correlation.py results/audio_logreg.txt \\
-      results/image_logreg.txt results/fusion_logreg.txt \\
-      --output artifacts/score_correlation.png
-
-For each pair of result files: computes Pearson + Spearman correlation, the
-fraction of segments where both predict the same hard decision, and a 2-D
-density scatter. Tells us whether the modalities are seeing the same eval
-samples as target / non-target, or are picking up complementary signal.
-"""
 
 from __future__ import annotations
 
@@ -39,7 +28,7 @@ def _load(p: Path) -> tuple[list[str], np.ndarray, np.ndarray]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("results", nargs="+", type=Path)
     ap.add_argument(
         "--output", type=Path, default=Path("artifacts/score_correlation.png")

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Package the project into a submission ZIP."""
 
 import argparse
 import subprocess
@@ -27,7 +26,6 @@ def collect_src(src_dir: Path) -> list[tuple[Path, str]]:
 
 
 def generate_requirements() -> str:
-    """Export runtime deps from pyproject.toml as pip-compatible requirements.txt."""
     result = subprocess.run(
         [
             "uv",
@@ -46,7 +44,7 @@ def generate_requirements() -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--results", type=Path, default=Path("results"))
     ap.add_argument("--docs", type=Path, default=Path("docs/dokumentace.pdf"))
     ap.add_argument("--src", type=Path, default=Path("src"))

@@ -1,23 +1,4 @@
 #!/usr/bin/env python3
-"""K-fold OOF estimate of the fusion classifier on dev.
-
-  uv run scripts/cv_oof_fusion.py
-
-The production fusion logreg is trained on the full dev split and reports
-metrics back on the same dev split → biased optimistic. This script
-re-fits the fusion classifier K times (default K=5, stratified) and
-aggregates held-out predictions to give an unbiased dev estimate.
-
-Per-modality models are NOT retrained — they're already trained on
-`train` only and produce honest dev scores. Only the fusion linear
-combination on top is K-folded.
-
-Notes:
-- Stratified K-fold (not session-grouped) because the dev set has only one
-  m431 session; session-grouped would put all 10 targets in one fold.
-- z-score normalization stats are computed PER FOLD (on train portion only)
-  to avoid leaking holdout info into normalization.
-"""
 
 from __future__ import annotations
 
@@ -41,7 +22,7 @@ from experiments.runners import _score_paired  # noqa: E402
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument(
         "--fusion-config", type=Path, default=Path("configs/fusion_baseline.toml")
     )
@@ -142,7 +123,7 @@ def main() -> int:
         b_eer = biased.get("eer", float("nan"))
         b_conf = biased.get("confusion", [None, None, None, None])
         print()
-        print("Compared to production fusion (trained on full dev — biased):")
+        print("Compared to production fusion (trained on full dev - biased):")
         print(f"  AUC = {b_auc:.4f}  (delta {auc - b_auc:+.4f})")
         print(f"  EER = {b_eer * 100:.2f}%  (delta {(eer - b_eer) * 100:+.2f}pp)")
         if all(c is not None for c in b_conf):
@@ -160,7 +141,7 @@ def main() -> int:
             f"OOF AUC={auc:.3f}, biased AUC={biased['auc']:.3f}"
         )
     else:
-        ax.set_title(f"Fusion ROC — CV-OOF (AUC={auc:.3f})")
+        ax.set_title(f"Fusion ROC - CV-OOF (AUC={auc:.3f})")
     ax.plot([0, 1], [0, 1], color="0.5", linestyle="--", linewidth=1)
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)

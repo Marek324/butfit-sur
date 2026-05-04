@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Bootstrap the dataset under ./dataset/."""
 
 import argparse
 import shutil
@@ -9,17 +8,16 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-URL = "https://www.fit.vutbr.cz/study/courses/SUR/public/projekt_2025-2026/SUR_projekt2025-2026.zip"
+URL = "https://www.fit.vutbr.cz/study/courses/SUR/public/projekt_2025-2026/SUR_projekt2025-2026_eval.zip"
 DEST = Path("dataset")
-REQUIRED = ("target_train", "target_dev", "non_target_train", "non_target_dev")
-
+REQUIRED = ("eval",)
 
 def already_populated() -> bool:
     return all((DEST / d).is_dir() and any((DEST / d).iterdir()) for d in REQUIRED)
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--force", action="store_true", help="re-download even if present")
     args = ap.parse_args()
 

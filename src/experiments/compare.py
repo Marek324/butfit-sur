@@ -1,5 +1,3 @@
-"""Side-by-side text table from `metrics.json` sidecars."""
-
 from __future__ import annotations
 
 import json
@@ -30,8 +28,8 @@ def compare_runs(metric_files: list[Path]) -> str:
         eer_pct = None if eer is None else eer * 100.0
         out.append(
             f"{r['name']:<35} {r['modality']:<8} "
-            f"{r.get('classifier', '—'):<10} "
-            f"{r.get('n_train', '—'):>7}  "
+            f"{r.get('classifier', '-'):<10} "
+            f"{r.get('n_train', '-'):>7}  "
             f"{fmt(auc):>6}  {fmt(eer_pct, prec=2):>6}"
         )
     return "\n".join(out)

@@ -1,7 +1,6 @@
 # Audio experiment: drop MFCC means, use only the 5 prosodic features
 # (log-F0 mean/std, jitter, shimmer, voicing ratio). Tests whether the
-# speaker-defining prosodic signal alone is robust enough — these features
-# survive heavy noise/EQ better than MFCC means in principle.
+# speaker-defining prosodic signal alone is robust enough.
 
 name = "audio_exp_prosodic_only"
 modality = "audio"

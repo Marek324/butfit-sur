@@ -1,8 +1,3 @@
-# Stress-dev waveform augmentation. Generates a harder dev set so ROC/DET
-# curves have something to draw — without this, AUC=1.0 systems collapse onto
-# the corner of the plot. The envelope is DISJOINT from configs/augment_audio.toml
-# (train) so dev still measures generalization, not memorized invariance.
-
 modality = "audio"
 
 source_target_dir    = "dataset/target_dev"
@@ -14,8 +9,6 @@ n_per_target    = 5
 n_per_nontarget = 2
 seed            = 99
 
-# Disjoint envelope — every range avoids overlap with the train envelope so
-# the model has to extrapolate, not just interpolate.
 [waveform]
 time_stretch_range = [0.78, 0.88]      # train was [0.9, 1.1]
 gain_db_range      = [-15.0, -8.0]     # train was [-6.0, 6.0]
@@ -25,4 +18,4 @@ eq_enabled         = true
 eq_gain_db_range   = [-7.0, -4.0]      # train was [-3.0, 3.0]
 eq_freq_hz_range   = [4500.0, 7500.0]  # train was [200, 4000]
 eq_q               = 1.0
-noise_snr_db_range = [3.0, 13.0]       # train was [15, 30] — much noisier
+noise_snr_db_range = [3.0, 13.0]       # train was [15, 30] - much noisier

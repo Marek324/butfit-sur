@@ -1,10 +1,3 @@
-# Baseline audio system: 10-dim utterance features + balanced logreg.
-# Single-target verification of m431.
-#
-# Augmentation is applied OFFLINE — run once, then training picks up
-# augmented samples from disk via train_dirs:
-#   uv run scripts/augment_dataset.py --config configs/augment_audio.toml
-
 name = "audio_baseline_logreg"
 modality = "audio"
 
@@ -37,10 +30,6 @@ zcr_high = 0.35
 min_speech_ms = 100
 min_silence_ms = 100
 
-# 18-dim utterance vector: 5 prosodic + 13 CMVN-MFCC means.
-# Promoted from configs/experiments/audio_more_mfcc.toml after the audio sweep
-# — best clean-dev metrics (AUC 0.983, EER 3.33%, 3 errors @ logit=0). See
-# docs/devjournal/2026-05-03-audio-experiments.md.
 [audio.features]
 f0_method = "pyin"
 f0_min_hz = 60.0

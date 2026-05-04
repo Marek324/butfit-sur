@@ -76,7 +76,7 @@ ASCII soubor se třemi poli na řádku oddělenými mezerou:
 | Pole | Popis |
 |------|-------|
 | 1 | Jméno segmentu (jméno souboru bez přípony `.wav` či `.png`) |
-| 2 | Číselné skóre — čím větší hodnota, tím si je systém jistější, že se jedná o hledanou osobu |
+| 2 | Číselné skóre - čím větší hodnota, tím si je systém jistější, že se jedná o hledanou osobu |
 | 3 | Tvrdé rozhodnutí: `1` pro hledanou osobu, jinak `0` (pro apriorní pravděpodobnost 0,5) |
 
 ## Požadované systémy

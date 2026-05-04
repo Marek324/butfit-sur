@@ -1,19 +1,3 @@
-"""Score-level multimodal fusion.
-
-Strategy: train two unimodal classifiers on `target_train`/`non_target_train`,
-then fit a 2-input logistic regression on stacked dev scores → labels. At
-test time, score each eval sample with both classifiers and apply the fusion
-LR. Logreg-on-top is the canonical score-level fusion choice — it learns the
-optimal weighting between modalities and absorbs whatever scale each upstream
-classifier produces.
-
-Caveat: when `train_on="dev"` (the default), fusion is trained on the dev
-split, so dev metrics REPORTED for the fusion system overestimate test
-performance. The honest path is `train_on="cv_oof"` (out-of-fold CV scores)
-but it requires retraining the per-modality models per fold; that's wired
-through the experiments module rather than here.
-"""
-
 from __future__ import annotations
 
 import pickle
@@ -45,7 +29,6 @@ def fit_fusion(
     fusion_cfg: FusionCfg,
     classifier_cfg: ClassifierCfg | None = None,
 ) -> FusionModel:
-    """Fit a 2-input logistic-regression fusion model on stacked scores."""
     cls = classifier_cfg or fusion_cfg.classifier
     if cls.type != "logreg":
         raise ValueError(
@@ -88,7 +71,6 @@ def fit_fusion(
 def score_fusion(
     model: FusionModel, audio_scores: np.ndarray, image_scores: np.ndarray
 ) -> np.ndarray:
-    """Real-valued fusion score, monotonic with P(target=1|audio,image)."""
     a_n = _apply_norm(audio_scores, model.audio_mean, model.audio_std)
     i_n = _apply_norm(image_scores, model.image_mean, model.image_std)
     X = np.column_stack([a_n, i_n])

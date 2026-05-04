@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""Score histogram for eval-set result files.
-
-  uv run scripts/plot_eval_scores.py results/*.txt --output artifacts/eval_scores.png
-
-Reads one or more result files in `<segment> <score> <decision>` format,
-and plots a per-system histogram of scores with the 50/50-prior decision
-threshold (score = 0) marked. Useful sanity check after `evaluate.py --split eval`:
-- if the histogram is bimodal with a clean separation, the model has high confidence
-- if it's a single fat blob, the model is uncertain on most of the eval set
-- the fraction above 0 tells you the predicted-target rate
-"""
 
 from __future__ import annotations
 
@@ -35,7 +24,7 @@ def _load_scores(p: Path) -> tuple[np.ndarray, np.ndarray]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("results", nargs="+", type=Path)
     ap.add_argument(
         "--output", type=Path, default=Path("artifacts/eval_scores.png")
@@ -44,7 +33,7 @@ def main() -> int:
         "--threshold",
         type=float,
         default=0.0,
-        help="decision threshold to mark on each histogram (default 0.0 — 50/50 prior)",
+        help="decision threshold to mark on each histogram (default 0.0 - 50/50 prior)",
     )
     args = ap.parse_args()
 
@@ -83,7 +72,7 @@ def main() -> int:
         ax.axvline(args.threshold, color="0.2", linestyle="--", linewidth=1.2)
         ax.set_ylabel("count")
         ax.set_title(
-            f"{label}  —  n={len(scores)}, predicted target={n_pos} ({n_pos / len(scores) * 100:.1f}%)"
+            f"{label}  -  n={len(scores)}, predicted target={n_pos} ({n_pos / len(scores) * 100:.1f}%)"
         )
         ax.grid(True, alpha=0.3)
 

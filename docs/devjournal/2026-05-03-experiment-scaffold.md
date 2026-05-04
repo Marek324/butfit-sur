@@ -1,16 +1,16 @@
-# Experiment scaffold — 2026-05-03
+# Experiment scaffold - 2026-05-03
 
 The project is experiment-driven by necessity (small dataset, many design choices). The scaffold makes side-by-side variants cheap.
 
 ## Per-sample feature cache
 
-`src/cache.py`. Layout: `artifacts/cache/<modality>/<config_hash>/<stem>.npy`. The config hash is derived from the relevant feature config (`AudioFeaturesCfg + VadCfg` for audio, `ImageFeaturesCfg` for image), so re-running with the same features but a different classifier reuses extraction. Re-running with different features writes a new cache directory — old features stay valid for the original config.
+`src/cache.py`. Layout: `artifacts/cache/<modality>/<config_hash>/<stem>.npy`. The config hash is derived from the relevant feature config (`AudioFeaturesCfg + VadCfg` for audio, `ImageFeaturesCfg` for image), so re-running with the same features but a different classifier reuses extraction. Re-running with different features writes a new cache directory - old features stay valid for the original config.
 
 The cache is mtime-aware: if the source file is newer than the cached entry, the entry is invalidated. This was added after re-augmenting silently kept stale features (the augmented filenames don't change, only the bytes).
 
 ## Metrics sidecars
 
-Each training run writes `artifacts/<name>/metrics.json` with AUC, EER, confusion, and metadata. `scripts/run_experiments.py` reads these sidecars from multiple artifact dirs and prints a comparison table. No re-training needed for the comparison — just the JSON files.
+Each training run writes `artifacts/<name>/metrics.json` with AUC, EER, confusion, and metadata. `scripts/run_experiments.py` reads these sidecars from multiple artifact dirs and prints a comparison table. No re-training needed for the comparison - just the JSON files.
 
 ## Modality-dispatching orchestrator
 
@@ -22,7 +22,7 @@ Each training run writes `artifacts/<name>/metrics.json` with AUC, EER, confusio
 
 ## Strict TOML config validation
 
-`src/config.py` parses TOML into frozen dataclasses with strict unknown-key rejection. Typo in a key raises immediately rather than silently using defaults. The dataclass tree mirrors the TOML hierarchy 1:1 with one piece of "flattening" sugar (the old `[audio.augment.train]` key — now removed since augmentation moved offline).
+`src/config.py` parses TOML into frozen dataclasses with strict unknown-key rejection. Typo in a key raises immediately rather than silently using defaults. The dataclass tree mirrors the TOML hierarchy 1:1 with one piece of "flattening" sugar (the old `[audio.augment.train]` key - now removed since augmentation moved offline).
 
 ## ROC + DET plotting
 
@@ -31,7 +31,7 @@ Each training run writes `artifacts/<name>/metrics.json` with AUC, EER, confusio
 ## What this enables
 
 - Re-running an experiment is cheap when features dominate cost (audio MFCC extraction is the bottleneck, ~1.5 s/sample uncached, ~0 cached).
-- Comparing multiple configs is just `run_experiments.py cfg1.toml cfg2.toml ...` — sidecars give the table.
+- Comparing multiple configs is just `run_experiments.py cfg1.toml cfg2.toml ...` - sidecars give the table.
 - `plot_curves.py --dev-dirs` lets us swap the evaluation set without touching baseline configs (used heavily once stress-dev was introduced).
 
 ## Trade-offs the scaffold is *not* paying for
@@ -40,4 +40,4 @@ Each training run writes `artifacts/<name>/metrics.json` with AUC, EER, confusio
 - No CV-OOF support. Folds are scaffolded in `src/cv.py` but not wired into the orchestrator. With only 2 m431 sessions, K-fold doesn't add much.
 - No automatic hyperparameter sweep. Each variant is its own TOML; sweeps are manual lists of configs to `run_experiments.py`.
 
-These are intentional — the scaffold optimizes for cheap iteration on *which features* and *which classifier*, not for hyperparameter optimization.
+These are intentional - the scaffold optimizes for cheap iteration on *which features* and *which classifier*, not for hyperparameter optimization.

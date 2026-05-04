@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-"""Pre-augment the training dataset offline.
-
-Reads an augment config (configs/augment_audio.toml or configs/augment_image.toml),
-applies the configured envelope to each source sample N times, and writes the
-results to disk as WAV/PNG files.
-
-Augmented filenames follow the pattern `<original_stem>_aug{k:02d}.{wav|png}`,
-which preserves session_id parsing (`_parse_filename` only inspects fields 1-2
-of the underscore-split stem) — so session-grouped CV continues to put a
-parent and its augmented children in the same fold.
-
-Usage:
-  uv run scripts/augment_dataset.py --config configs/augment_audio.toml
-  uv run scripts/augment_dataset.py --config configs/augment_image.toml
-"""
 
 from __future__ import annotations
 
@@ -123,7 +108,7 @@ def _augment_image(cfg: ImageAugmentConfig) -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True, type=Path)
     args = ap.parse_args()
 

@@ -1,12 +1,3 @@
-"""Sample enumeration, WAV loading, PNG loading.
-
-Common conventions:
-- Filename stem = `<segment_name>` in the result file.
-- Speaker ID is field 1 of the underscore-separated stem.
-- Session ID = "<speaker>_<session>"; samples in the same session must
-  not straddle a CV fold boundary (instructor recommendation).
-"""
-
 from __future__ import annotations
 
 import wave
@@ -31,8 +22,6 @@ class Sample:
 
 @dataclass(frozen=True)
 class PairedSample:
-    """Audio + image sample that share the same filename stem (used for fusion)."""
-
     audio_path: Path
     image_path: Path
     name: str
@@ -53,13 +42,6 @@ def enumerate_split(
     extension: str = ".wav",
     label_required: bool = True,
 ) -> list[Sample]:
-    """Enumerate samples across the given directories.
-
-    Label is inferred from each directory name:
-      - starts with 'non_target_'  → label 0
-      - starts with 'target_'      → label 1
-      - otherwise                  → label None (eval mode), unless label_required
-    """
     out: list[Sample] = []
     for d in dirs:
         d = Path(d)
@@ -91,13 +73,6 @@ def enumerate_paired(
     dirs: list[Path],
     label_required: bool = True,
 ) -> list[PairedSample]:
-    """Enumerate (WAV, PNG) pairs that share a filename stem under the given dirs.
-
-    Both files must exist next to each other; orphaned files are skipped and
-    reported via assertion-style error if label_required=True. Useful for
-    fusion training/scoring where the two modalities operate on the same
-    underlying sample.
-    """
     out: list[PairedSample] = []
     for d in dirs:
         d = Path(d)
@@ -135,7 +110,6 @@ def enumerate_paired(
 
 
 def load_wav_mono16k(p: Path) -> tuple[np.ndarray, int]:
-    """Read a WAV file as float32 in [-1, 1]. Asserts 16 kHz mono PCM16."""
     with wave.open(str(p)) as f:
         sr = f.getframerate()
         ch = f.getnchannels()
@@ -152,10 +126,6 @@ def load_wav_mono16k(p: Path) -> tuple[np.ndarray, int]:
 
 
 def load_png(p: Path, grayscale: bool = False) -> np.ndarray:
-    """Read a PNG as float32 in [0, 1].
-
-    Returns (H, W, 3) for RGB or (H, W) for grayscale. Strips alpha if present.
-    """
     with Image.open(p) as im:
         if grayscale:
             im = im.convert("L")

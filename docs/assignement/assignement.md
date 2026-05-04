@@ -76,7 +76,7 @@ ASCII file with three fields per line separated by spaces:
 | Field | Description |
 |-------|-------------|
 | 1 | Segment name (filename without the `.wav` or `.png` extension) |
-| 2 | Numerical score — the higher the value, the more certain the system is that it is the target person |
+| 2 | Numerical score - the higher the value, the more certain the system is that it is the target person |
 | 3 | Hard decision: `1` for the target person, otherwise `0` (assuming a prior probability of 0.5) |
 
 ## Required Systems

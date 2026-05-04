@@ -1,4 +1,4 @@
-# 2-stage audio cache + experiments package — 2026-05-03
+# 2-stage audio cache + experiments package - 2026-05-03
 
 ## The audio extraction bottleneck wasn't formants
 
@@ -13,7 +13,7 @@ formants per_frame : 0.212 s   ← actually fine
 spectral_centroid  : 0.032 s
 ```
 
-**pyin dominates** — 95% of the per-sample wall time is `librosa.pyin`. The
+**pyin dominates** - 95% of the per-sample wall time is `librosa.pyin`. The
 formant work I worried about is 20× cheaper than pyin.
 
 Re-running pyin every time we change `include` or `mfcc_n_means` was the
@@ -45,7 +45,7 @@ artifacts/cache/audio_pre/<pre_cfg_hash>/<stem>.npz  ← AudioPre intermediates
 `pre_cfg_hash` is keyed only on what affects the *contents* of `AudioPre`:
 `vad_cfg`, pyin params (`f0_method`, `f0_min_hz`, `f0_max_hz`), MFCC dim
 (`mfcc_n`, `mel_filters`, `cmvn`). Crucially **NOT** `include` or
-`mfcc_n_means` — those only affect the cheap aggregation step.
+`mfcc_n_means` - those only affect the cheap aggregation step.
 
 Lookup order in `_audio_two_stage_cached`:
 1. Vector cache hit → return final array.
@@ -80,7 +80,7 @@ This is what makes running many feature variants tractable.
 Same module also got a formant-extraction speedup:
 
 - LPC is now computed only on **voiced-in-speech** frames (skips ~50% of frames
-  on typical recordings — non-voiced frames stay NaN-padded in the output).
+  on typical recordings - non-voiced frames stay NaN-padded in the output).
 - Polynomial roots are found via batched companion-matrix `np.linalg.eigvals`
   on a 3-D tensor instead of `np.roots` per polynomial.
 
@@ -102,17 +102,17 @@ src/experiments/
 
 All callers (scripts/train.py, evaluate.py, run_experiments.py, plot_curves.py,
 plot_experiment_summary.py) only depend on the public names re-exported from
-`__init__.py`, so the move was a pure refactor — no test failures, no
+`__init__.py`, so the move was a pure refactor - no test failures, no
 behavior change, ruff + ty clean.
 
 ## What this enables
 
 - Many audio variants in minutes, not hours. The cancelled
-  `audio_speaker_features` extension is now tractable — re-aggregating the
+  `audio_speaker_features` extension is now tractable - re-aggregating the
   16-d vector from cached pre takes a few seconds across the whole training
   set.
 - VAD experiments (`audio_vad_off`, `audio_vad_strict`) become first-class
-  variants — they each need their own pre cache (vad_cfg is a pre param) but
+  variants - they each need their own pre cache (vad_cfg is a pre param) but
   any subsequent feature changes on top reuse the new cache.
 - Future experiments that change classifier-only (no feature change) hit both
   caches and are instant.

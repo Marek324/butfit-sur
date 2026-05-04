@@ -1,21 +1,3 @@
-"""Generic classifier with persist/load — handles logreg and SVM.
-
-Both `LogisticRegression` and `SVC` expose `decision_function`, which returns
-a real-valued score monotonic with P(target=1|x) and aligned so that
-score >= 0 ⇔ predicted target. That makes the assignment-mandated 50/50-prior
-decision threshold equal to 0 regardless of classifier choice.
-
-Note on score semantics:
-  - logreg: decision_function = log-odds (logit). Calibrated under standard
-    LR assumptions; threshold=0 ⇔ P(target)=0.5.
-  - svm:    decision_function = signed distance to the hyperplane. NOT a
-    probability; threshold=0 is still the trained boundary, but absolute
-    score magnitudes are not comparable across SVMs with different C.
-
-For score-level fusion the fusion logreg absorbs whatever scale each upstream
-classifier produces, so this asymmetry is benign.
-"""
-
 from __future__ import annotations
 
 import pickle
@@ -81,7 +63,6 @@ def fit(
 
 
 def score(model: Model, X: np.ndarray) -> np.ndarray:
-    """Real-valued score; higher ⇒ more target. Aligned with class label 1."""
     return np.asarray(model.estimator.decision_function(X), dtype=np.float64)
 
 

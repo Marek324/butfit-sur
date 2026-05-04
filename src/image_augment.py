@@ -1,19 +1,3 @@
-"""Image augmentations chosen to be approximately identity-preserving.
-
-Geometric + photometric + sensor-style transforms — none of which alter the
-perceived person:
-  - horizontal flip (faces are roughly bilaterally symmetric)
-  - small rotation (head tilt, head pose drift)
-  - small translate (face crop drift)
-  - brightness/contrast jitter (lighting variation)
-  - additive Gaussian pixel noise (sensor noise, JPEG-style artifacts)
-  - optional small crop
-
-Deliberately NOT implemented: vertical flip, large rotations, color hue
-rotation. Augmentations operate in image space — feature extraction happens
-after.
-"""
-
 from __future__ import annotations
 
 import numpy as np
@@ -23,10 +7,6 @@ from config import ImageAugCfg
 
 
 def augment(img: np.ndarray, cfg: ImageAugCfg, rng: np.random.Generator) -> np.ndarray:
-    """Apply one random sample from the image-augmentation envelope.
-
-    img: (H, W) or (H, W, 3) float in [0, 1]. Returns same dtype / shape.
-    """
     out = img.astype(np.float32, copy=True)
 
     if rng.random() < cfg.horizontal_flip_p:

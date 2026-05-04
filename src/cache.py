@@ -1,16 +1,3 @@
-"""Per-sample feature cache.
-
-Goal: amortize MFCC/HOG extraction across runs that vary only the classifier.
-The cache key is (modality, feature-config hash, sample stem). Cache misses
-fall through to the supplied compute function.
-
-Cache entries are also keyed against the source file's mtime: if the source
-file is newer than the cached entry (e.g. after re-running augment_dataset.py
-with a different envelope), the entry is invalidated and recomputed.
-
-Layout: <root>/<modality>/<config_hash>/<stem>.npy
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -23,11 +10,6 @@ import numpy as np
 
 
 def config_hash(*parts: Any) -> str:
-    """Stable 12-char hash of one or more dataclass/primitive structures.
-
-    Uses a deterministic repr; tuples and lists hash the same way regardless
-    of which one was used in the schema.
-    """
     h = hashlib.sha1()
     for p in parts:
         h.update(_canonical_repr(p).encode("utf-8"))
@@ -58,13 +40,6 @@ def get_or_compute(
     enabled: bool = True,
     source_path: Path | None = None,
 ) -> np.ndarray:
-    """Return cached array if present and fresh, otherwise compute and persist.
-
-    Freshness: if `source_path` is given and its mtime is newer than the cache
-    entry's mtime, the cached value is treated as stale. Lets the offline
-    augmentation script re-write `<stem>_aug{kk}.{wav,png}` without leaving
-    callers reading old features.
-    """
     if enabled and cache_path.is_file():
         if source_path is None or source_path.stat().st_mtime <= cache_path.stat().st_mtime:
             return np.load(cache_path)

@@ -1,16 +1,4 @@
 #!/usr/bin/env python3
-"""Classical short-term energy + ZCR VAD over every WAV in dataset/.
-
-Pipeline:
-    1. Pre-emphasize audio (alpha=0.97).
-    2. Frame at 25ms / 10ms hop.
-    3. Per-frame log-energy (dB) and zero-crossing rate.
-    4. Adaptive energy threshold: noise floor (10th pct) + 8 dB.
-    5. ZCR-aided decision so that fricatives (low energy, high ZCR) survive.
-    6. Hangover smoothing: drop speech runs <100ms, drop silence runs <100ms.
-
-Output JSON matches run_silero.py's schema for direct comparison.
-"""
 
 from __future__ import annotations
 
@@ -57,7 +45,6 @@ def frame_signal(x: np.ndarray, frame_len: int, hop_len: int) -> np.ndarray:
 
 
 def compute_features(x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Return (energy_db, zcr) per frame."""
     pre = np.empty_like(x)
     pre[0] = x[0]
     pre[1:] = x[1:] - PREEMPH * x[:-1]
@@ -81,7 +68,6 @@ def compute_features(x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 def smooth_runs(
     mask: np.ndarray, min_speech_frames: int, min_silence_frames: int
 ) -> np.ndarray:
-    """Drop speech runs shorter than min_speech_frames, then merge silences shorter than min_silence_frames."""
     out = mask.copy()
 
     # Drop tiny speech runs.
@@ -117,7 +103,6 @@ def smooth_runs(
 def mask_to_segments(
     mask: np.ndarray, hop_s: float, frame_s: float
 ) -> list[list[float]]:
-    """Convert a per-frame boolean mask to [start_s, end_s] segments."""
     segs = []
     n = len(mask)
     i = 0
@@ -162,7 +147,7 @@ def vad_one(x: np.ndarray) -> tuple[list[list[float]], float, float]:
 
 
 def main() -> int:
-    argparse.ArgumentParser(description=__doc__).parse_args()
+    argparse.ArgumentParser().parse_args()
 
     files = sorted(DATASET.rglob("*.wav"))
     print(f"Found {len(files)} WAV files")

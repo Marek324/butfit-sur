@@ -1,4 +1,4 @@
-# 50/50 prior enforcement — 2026-05-03
+# 50/50 prior enforcement - 2026-05-03
 
 The assignment specifies: *"Hard decision: 1 if score ≥ threshold else 0, assuming a prior probability of 0.5."* This has to be enforced consistently across audio, image, and fusion. Two parts:
 
@@ -13,7 +13,7 @@ After offline augmentation: **320 target / 792 non-target.** Without `class_weig
 
 Equal effective mass per class.
 
-For SVMs, `class_weight='balanced'` shifts the hyperplane the same way — `decision_function = 0` corresponds to balanced classes regardless of training counts.
+For SVMs, `class_weight='balanced'` shifts the hyperplane the same way - `decision_function = 0` corresponds to balanced classes regardless of training counts.
 
 ## 2. Threshold the score at 0
 
@@ -25,7 +25,7 @@ The score column in the result file is a real number, monotonic with target prob
 
 After noise was added to audio augmentation, the system started misbehaving at threshold-0 (TP=4/10 instead of 8/10) even though `class_weight='balanced'` was set. Initially looked like a prior-enforcement bug; turned out to be the class-asymmetric noise issue (see augmentation entry).
 
-**Distinction matters:** the 50/50 prior is a *decision rule*, not a guarantee about the score distribution. With `class_weight='balanced'` + threshold = 0, you implement the correct decision rule. Whether the rule produces the *Bayes-optimal* error rate depends on whether the trained model approximates the true posterior — which it can fail to do for unrelated reasons (overfitting, train/test mismatch, asymmetric augmentation).
+**Distinction matters:** the 50/50 prior is a *decision rule*, not a guarantee about the score distribution. With `class_weight='balanced'` + threshold = 0, you implement the correct decision rule. Whether the rule produces the *Bayes-optimal* error rate depends on whether the trained model approximates the true posterior - which it can fail to do for unrelated reasons (overfitting, train/test mismatch, asymmetric augmentation).
 
 So the 50/50 prior is correctly enforced everywhere ✓. But the rule's actual error rate at threshold-0 depends on the model's calibration, not on the rule itself.
 

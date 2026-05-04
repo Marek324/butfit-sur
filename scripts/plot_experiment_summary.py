@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-"""Bar-chart summary of experiment results from metrics.json sidecars.
-
-  uv run scripts/plot_experiment_summary.py \\
-      configs/experiments/image_*.toml configs/image_baseline.toml \\
-      --output artifacts/experiments/image_summary.png
-
-Reads `artifacts/<name>/metrics.json` for each given config (its `name` field
-keys the artifact dir) and emits a 2-panel figure: AUC bar chart on the left,
-EER% bar chart on the right. Compact birds-eye view that complements
-plot_curves.py (which is per-system curves, not aggregates).
-
-If `--dev-dirs` is given, *re-scores* dev on those dirs and uses those
-metrics — useful for stress-dev summaries since metrics.json sidecars only
-hold clean-dev numbers.
-"""
 
 from __future__ import annotations
 
@@ -60,7 +45,7 @@ def _from_sidecar(artifacts_root: Path, name: str) -> tuple[float, float] | None
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("configs", nargs="+", type=Path)
     ap.add_argument("--artifacts", type=Path, default=Path("artifacts"))
     ap.add_argument(

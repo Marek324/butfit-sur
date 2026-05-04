@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-"""Run Silero VAD on every WAV in dataset/ and save segments to JSON.
-
-Output JSON shape:
-    {
-      "sample_rate": 16000,
-      "frame_ms": <silero internal, ~32ms>,
-      "files": {
-         "<rel_path>": {
-            "duration_s": float,
-            "speech_segments_s": [[start_s, end_s], ...],
-            "speech_ratio": float
-         }
-      }
-    }
-"""
 
 from __future__ import annotations
 
@@ -36,7 +21,6 @@ def wav_paths() -> list[Path]:
 
 
 def read_wav_mono16k(p: Path) -> torch.Tensor:
-    """Load mono 16kHz int16 WAV as float32 tensor in [-1, 1]."""
     with wave.open(str(p)) as f:
         if f.getframerate() != SR or f.getnchannels() != 1 or f.getsampwidth() != 2:
             raise RuntimeError(f"unexpected format for {p}: {f.getparams()}")
@@ -47,7 +31,7 @@ def read_wav_mono16k(p: Path) -> torch.Tensor:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--threshold", type=float, default=0.5)
     ap.add_argument("--min-speech-ms", type=int, default=100)
     ap.add_argument("--min-silence-ms", type=int, default=100)

@@ -1,11 +1,5 @@
-"""Download artifacts/ (feature cache + per-experiment runs) from HuggingFace.
-
-Run after cloning. Mirrors the HF tree under ``artifacts/`` so ``cache/`` and
-each per-experiment run dir land at the same paths your local pipeline expects.
-Pass ``--no-cache`` to skip the large ``cache/`` tree (~600 MB).
-"""
-
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -17,8 +11,22 @@ ROOT = Path(__file__).resolve().parent.parent
 ARTIFACTS = ROOT / "artifacts"
 
 
+def _load_dotenv() -> None:
+    env_path = ROOT / ".env"
+    if not env_path.is_file():
+        return
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    _load_dotenv()
+    parser = argparse.ArgumentParser()
     parser.add_argument("--no-cache", action="store_true", help="Skip downloading cache/")
     args = parser.parse_args()
 

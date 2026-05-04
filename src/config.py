@@ -1,5 +1,3 @@
-"""TOML experiment config + dataclass schema with strict unknown-key validation."""
-
 from __future__ import annotations
 
 import tomllib
@@ -94,9 +92,6 @@ class ImageFeaturesCfg:
 
 @dataclass(frozen=True)
 class ImageAugCfg:
-    """Image-augmentation envelope. Used by the offline augment_dataset.py
-    script — train-time augmentation is gone, augmented samples live on disk."""
-
     horizontal_flip_p: float = 0.5
     rotation_deg_range: tuple[float, float] = (-10.0, 10.0)
     brightness_range: tuple[float, float] = (0.85, 1.15)
@@ -140,7 +135,7 @@ class ClassifierCfg:
 class FusionCfg:
     audio_artifact: str = ""  # name of artifacts/<dir> for the audio system to fuse
     image_artifact: str = ""  # name of artifacts/<dir> for the image system to fuse
-    score_normalize: str = "none"  # | "zscore" — applied before fusion logreg
+    score_normalize: str = "none"  # | "zscore" - applied before fusion logreg
     classifier: ClassifierCfg = field(default_factory=ClassifierCfg)
     train_on: str = (
         "dev"  # which split to use as fusion training data ("dev" | "cv_oof")
@@ -172,6 +167,7 @@ class Config:
     classifier: ClassifierCfg = field(default_factory=ClassifierCfg)
     cache: CacheCfg = field(default_factory=CacheCfg)
     output: OutputCfg = field(default_factory=OutputCfg)
+    seed: int = 42
 
 
 def _convert(value: Any, target_type: Any) -> Any:
@@ -217,8 +213,6 @@ def load_config(path: Path | str) -> Config:
 
 @dataclass(frozen=True)
 class AudioAugmentConfig:
-    """Top-level config for `scripts/augment_dataset.py` in audio mode."""
-
     modality: str  # must be "audio"
     source_target_dir: Path
     source_nontarget_dir: Path
@@ -232,8 +226,6 @@ class AudioAugmentConfig:
 
 @dataclass(frozen=True)
 class ImageAugmentConfig:
-    """Top-level config for `scripts/augment_dataset.py` in image mode."""
-
     modality: str  # must be "image"
     source_target_dir: Path
     source_nontarget_dir: Path

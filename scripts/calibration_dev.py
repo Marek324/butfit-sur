@@ -1,28 +1,4 @@
 #!/usr/bin/env python3
-"""Score calibration on dev — reliability diagrams for audio/image/fusion.
-
-  uv run scripts/calibration_dev.py
-
-For each modality, applies sigmoid to the LR decision-function output to
-produce P(target=1), bins predictions into equal-width bins on [0, 1], and
-plots predicted-mean vs observed-frequency. The y=x diagonal is the
-ideal-calibration reference: above means under-confident, below means
-over-confident.
-
-Reported per modality:
-  - Brier = mean((P - y)^2)                       (lower is better)
-  - ECE   = sum_b (n_b/n) * |obs_b - pred_b|      (lower is better)
-
-Audio + image: production models are trained on `train` only → dev scores
-are honest. Fusion: production model is trained on dev → biased optimistic;
-we use stratified CV-OOF (matching scripts/cv_oof_fusion.py) to get
-unbiased fusion calibration.
-
-Caveat: the LR was fit with `class_weight='balanced'`, which reweights the
-training loss so the sigmoid output is the posterior under the rebalanced
-prior, not the natural class prior. Calibration here measures how that
-output diverges from observed dev frequency.
-"""
 
 from __future__ import annotations
 
@@ -46,7 +22,6 @@ from experiments.runners import _score_paired  # noqa: E402
 
 
 def _calibration_metrics(p: np.ndarray, y: np.ndarray, n_bins: int):
-    """Return (brier, ece, centers, pred_mean, obs_freq, counts)."""
     edges = np.linspace(0.0, 1.0, n_bins + 1)
     bin_idx = np.clip(np.digitize(p, edges) - 1, 0, n_bins - 1)
     centers = 0.5 * (edges[:-1] + edges[1:])
@@ -72,7 +47,6 @@ def _calibration_metrics(p: np.ndarray, y: np.ndarray, n_bins: int):
 def _oof_fusion_scores(
     a_scores: np.ndarray, i_scores: np.ndarray, y: np.ndarray, n_folds: int, seed: int = 42
 ) -> np.ndarray:
-    """Stratified K-fold OOF logits — mirrors scripts/cv_oof_fusion.py."""
     n = len(y)
     n_targets = int((y == 1).sum())
     n_folds = min(n_folds, n_targets)
@@ -131,7 +105,7 @@ def _plot_reliability(
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--artifacts", type=Path, default=Path("artifacts"))
     ap.add_argument(
         "--fusion-config", type=Path, default=Path("configs/fusion_baseline.toml")
@@ -177,7 +151,7 @@ def main() -> int:
         axes[2], "Fusion (CV-OOF)", f_p, f_y, args.n_bins, "tab:orange"
     )
     fig.suptitle(
-        f"Score calibration on dev (n={len(paired)}, {args.n_bins} bins) — "
+        f"Score calibration on dev (n={len(paired)}, {args.n_bins} bins) - "
         "predicted P(target) via sigmoid(logit)",
         fontsize=12,
     )

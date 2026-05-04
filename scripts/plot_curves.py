@@ -1,23 +1,4 @@
 #!/usr/bin/env python3
-"""Plot ROC and DET curves for one or more trained systems on the dev split.
-
-  uv run scripts/plot_curves.py \\
-      configs/audio_baseline.toml \\
-      configs/image_baseline.toml \\
-      configs/fusion_baseline.toml \\
-      --output artifacts/curves.png
-
-Two panels in one figure:
-  - ROC: TPR vs FPR (linear axes), with the EER operating point marked and
-         AUC printed in the legend.
-  - DET: FNR vs FPR on probit-warped axes — the standard biometric-verification
-         visualization, where well-behaved systems plot as nearly straight
-         lines and small differences in the low-error corner stay readable.
-
-Fusion dev curves are biased optimistic (fusion is trained on dev). They are
-still informative for checking that fusion strictly dominates each unimodal
-system, just don't read absolute EER as a generalization estimate.
-"""
 
 from __future__ import annotations
 
@@ -182,7 +163,7 @@ def plot_curves(
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("configs", nargs="+", type=Path)
     ap.add_argument("--artifacts", type=Path, default=Path("artifacts"))
     ap.add_argument("--output", type=Path, default=Path("artifacts/curves.png"))

@@ -1,16 +1,4 @@
 #!/usr/bin/env python3
-"""Evaluate a trained classifier (audio | image | fusion).
-
-  # Dev metrics for any modality
-  uv run scripts/evaluate.py --config configs/audio_baseline.toml --split dev
-
-  # Score the eval set declared by `data.eval_dirs` in the config and emit the
-  # submission result file
-  uv run scripts/evaluate.py --config configs/audio_baseline.toml --split eval
-
-  # Score an arbitrary unlabeled directory (overrides eval_dirs)
-  uv run scripts/evaluate.py --config configs/audio_baseline.toml --input some/dir
-"""
 
 from __future__ import annotations
 
@@ -138,7 +126,7 @@ def _print_score_distribution(scores: np.ndarray, y: np.ndarray) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True, type=Path)
     ap.add_argument("--artifacts", type=Path, default=Path("artifacts"))
     ap.add_argument(

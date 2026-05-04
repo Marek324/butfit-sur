@@ -1,26 +1,3 @@
-"""Per-utterance audio feature extraction.
-
-Default 10-dim vector for single-target verification:
-  log F0 mean, log F0 std, jitter (local), shimmer (local), voicing ratio,
-  + first 5 CMVN-MFCC means over voiced-speech frames.
-
-Optional speaker-discriminative descriptors that compose well with the
-augmentation envelope (each has a known relationship to one of our
-augmentations — see docs/devjournal/2026-05-03-audio-speaker-features.md):
-  - f1_median, f2_median, f3_median: per-utterance log-Hz medians of the
-    first three formants (LPC poles) over voiced-in-speech frames. F_n shifts
-    linearly under VTLP and is largely invariant to gain / EQ / additive
-    noise in expectation.
-  - f2_f1_ratio, f3_f1_ratio: VTL-INVARIANT formant-ratio descriptors —
-    they cancel out the VTL scaling factor while staying speaker-discriminative.
-  - spectral_centroid_log_mean: log-Hz mean of the spectral centroid over
-    voiced-in-speech frames. Pitch-covariant; bounded under EQ.
-
-All features are utterance-level aggregates over VAD-detected speech and
-pyin-voiced frames. Pure DSP — librosa.pyin, librosa.feature.mfcc,
-librosa.lpc, and hand-rolled jitter/shimmer. No pretrained anything.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -35,31 +12,19 @@ from vad import speech_mask
 
 @dataclass(frozen=True)
 class AudioPre:
-    """All per-frame intermediates that are heavy to compute and shared across
-    feature-variant experiments. Pyin is the slow part (~4 s/sample @16 kHz);
-    MFCC + formants + centroid together add ~0.3 s. Cacheable separately from
-    the final feature vector so swapping `include` / `mfcc_n_means` only re-runs
-    the cheap aggregation step.
-    """
-
-    sp_mask: np.ndarray         # (T,) bool   — VAD speech mask
-    f0: np.ndarray              # (T,) float  — pyin F0 in Hz, NaN where unvoiced
-    voiced_flag: np.ndarray     # (T,) bool   — pyin voiced indicator
-    voiced_in_speech: np.ndarray  # (T,) bool — sp_mask & voiced_flag & finite(f0)
-    rms: np.ndarray             # (T,) float  — frame RMS
-    mfcc: np.ndarray            # (n_mfcc, T) — CMVN'd if cmvn_per_utterance else raw
-    formants_per_frame: np.ndarray   # (T, n_formants) — LPC pole frequencies, NaN-padded
-    centroid_per_frame: np.ndarray   # (T,) — spectral centroid in Hz
+    sp_mask: np.ndarray         # (T,) bool   - VAD speech mask
+    f0: np.ndarray              # (T,) float  - pyin F0 in Hz, NaN where unvoiced
+    voiced_flag: np.ndarray     # (T,) bool   - pyin voiced indicator
+    voiced_in_speech: np.ndarray  # (T,) bool - sp_mask & voiced_flag & finite(f0)
+    rms: np.ndarray             # (T,) float  - frame RMS
+    mfcc: np.ndarray            # (n_mfcc, T) - CMVN'd if cmvn_per_utterance else raw
+    formants_per_frame: np.ndarray   # (T, n_formants) - LPC pole frequencies, NaN-padded
+    centroid_per_frame: np.ndarray   # (T,) - spectral centroid in Hz
 
 
 def extract(
     x: np.ndarray, sr: int, vad_cfg: VadCfg, feat_cfg: AudioFeaturesCfg
 ) -> np.ndarray:
-    """Compute the per-utterance feature vector.
-
-    Output order: feat_cfg.include items in given order, then mfcc_n_means
-    MFCC mean coefficients (low-order first).
-    """
     pre = extract_pre(x, sr, vad_cfg, feat_cfg)
     return aggregate(pre, feat_cfg)
 
@@ -67,8 +32,6 @@ def extract(
 def extract_pre(
     x: np.ndarray, sr: int, vad_cfg: VadCfg, feat_cfg: AudioFeaturesCfg
 ) -> AudioPre:
-    """Compute all heavy per-frame intermediates. Hash-keyable separately from
-    the feature vector — see `pre_config_hash`."""
     hop = int(sr * vad_cfg.hop_ms / 1000)
     win = int(sr * vad_cfg.frame_ms / 1000)
 
@@ -138,8 +101,6 @@ def extract_pre(
 
 
 def aggregate(pre: AudioPre, feat_cfg: AudioFeaturesCfg) -> np.ndarray:
-    """Aggregate per-utterance feature vector from pre-computed intermediates.
-    Fast — just selects and means/medians; ~10 ms per sample."""
     feats: list[float] = []
     for name in feat_cfg.include:
         feats.append(
@@ -166,9 +127,6 @@ def aggregate(pre: AudioPre, feat_cfg: AudioFeaturesCfg) -> np.ndarray:
 
 
 def pre_config_hash(vad_cfg: VadCfg, feat_cfg: AudioFeaturesCfg) -> str:
-    """Stable hash for the pre-extraction config. Uses fields that affect the
-    contents of `AudioPre` — pyin params + MFCC dim/CMVN. NOT include or
-    mfcc_n_means — those only affect aggregation."""
     from cache import config_hash
 
     return config_hash(
@@ -184,7 +142,7 @@ def pre_config_hash(vad_cfg: VadCfg, feat_cfg: AudioFeaturesCfg) -> str:
 
 def save_pre(pre: AudioPre, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    # numpy.savez always appends .npz to the basename — pass without suffix.
+    # numpy.savez always appends .npz to the basename - pass without suffix.
     np.savez(
         path.with_suffix(""),
         sp_mask=pre.sp_mask,
@@ -213,7 +171,6 @@ def load_pre(path: Path) -> AudioPre:
 
 
 def feature_names(feat_cfg: AudioFeaturesCfg) -> list[str]:
-    """Order-aligned with extract() output, useful for debugging / reporting."""
     names = list(feat_cfg.include)
     names.extend([f"mfcc_mean_{i}" for i in range(feat_cfg.mfcc_n_means)])
     return names
@@ -284,20 +241,6 @@ def _formants_per_frame(
     f_max_hz: float | None = None,
     voiced_mask: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Per-frame LPC formant estimates. Returns (n_frames, n_formants) of NaN-padded
-    Hz values (NaN where the LPC fit failed, no valid pole was found, or the
-    frame is filtered by `voiced_mask`).
-
-    Optimizations:
-      * LPC is computed with a single batched `librosa.lpc(..., axis=-1)` call
-        on the windowed frames matrix, not per-frame.
-      * If `voiced_mask` is given, only voiced frames are processed — non-voiced
-        frames stay NaN. Cuts compute by ~50% on typical speech.
-      * Roots are found via batched companion-matrix `np.linalg.eigvals` over a
-        3-D tensor instead of per-polynomial `np.roots`.
-
-    Total cost on 10 s of audio: ~50 ms (vs ~210 ms for the previous loop).
-    """
     if f_max_hz is None:
         f_max_hz = sr * 0.5 - 100.0
     x = x.astype(np.float32)
@@ -328,7 +271,7 @@ def _formants_per_frame(
     frames = frames[keep]
     active_idx = active_idx[keep]
 
-    # Per-frame LPC (still loop — librosa.lpc batching is currently slower than
+    # Per-frame LPC (still loop - librosa.lpc batching is currently slower than
     # the loop). The loop is fast (~80 ms for 1000 frames).
     a = np.zeros((frames.shape[0], lpc_order + 1), dtype=np.float32)
     for i in range(frames.shape[0]):

@@ -1,5 +1,5 @@
 # Audio experiment: same baseline features, stronger L2 reg (C=0.1).
-# Mirrors what worked for image — does the regularization help here too?
+# Mirrors what worked for image - does the regularization help here too?
 
 name = "audio_exp_strong_reg"
 modality = "audio"

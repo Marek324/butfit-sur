@@ -1,10 +1,3 @@
-# Baseline multimodal fusion: score-level logreg over (audio, image) scores.
-# Requires audio + image baselines to have been trained first:
-#   uv run scripts/train.py --config configs/audio_baseline.toml
-#   uv run scripts/train.py --config configs/image_baseline.toml
-# Then:
-#   uv run scripts/train.py --config configs/fusion_baseline.toml
-
 name = "fusion_baseline_logreg"
 modality = "fusion"
 

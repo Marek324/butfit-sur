@@ -1,14 +1,3 @@
-"""Per-image feature extraction.
-
-Default: HOG (Histogram of Oriented Gradients) on grayscale faces. Hand-rolled
-DSP descriptor — no learned weights, no pretrained anything. HOG is a strong
-baseline for small face crops because the 80×80 input is too small for any
-deep architecture trained from scratch on ~150 training images.
-
-Output is a flat 1-D feature vector per image. Caller is responsible for
-applying any global PCA reduction across the training set.
-"""
-
 from __future__ import annotations
 
 import numpy as np
@@ -20,11 +9,6 @@ from config import ImageFeaturesCfg
 
 
 def extract(img: np.ndarray, cfg: ImageFeaturesCfg) -> np.ndarray:
-    """Compute the per-image feature vector.
-
-    img: (H, W) or (H, W, 3) float in [0, 1]; either is accepted regardless of
-    cfg.grayscale (the function will convert as needed).
-    """
     img = _prepare(img, cfg)
 
     if cfg.method == "hog":
@@ -46,7 +30,6 @@ def extract(img: np.ndarray, cfg: ImageFeaturesCfg) -> np.ndarray:
 
 
 def feature_dim(cfg: ImageFeaturesCfg) -> int:
-    """Best-effort static feature dimension for sanity checking / preallocation."""
     h, w = cfg.image_size
     if cfg.method == "raw_flatten":
         c = 1 if cfg.grayscale else 3

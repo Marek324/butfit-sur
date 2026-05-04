@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Inspect classifier coefficients of the production models.
-
-  uv run scripts/coef_inspect.py
-
-For audio (18 named features) — full bar chart of weights, sorted by sign.
-For image (2916 HOG dims) — top-K positive + top-K negative + a histogram of
-all weights (so the long tail isn't hidden).
-For fusion (2 inputs) — both weights side by side; tells which modality
-dominates the fusion linear combination.
-"""
 
 from __future__ import annotations
 
@@ -30,7 +20,7 @@ def _load_pkl(p: Path):
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--artifacts", type=Path, default=Path("artifacts"))
     ap.add_argument(
         "--output", type=Path, default=Path("artifacts/coefficients.png")
@@ -106,7 +96,7 @@ def main() -> int:
     ax.set_title(f"Audio (n={len(a_coef)}, intercept={a_int:+.3f})")
     ax.grid(True, axis="x", alpha=0.3)
 
-    # Image — top-K each + histogram inset.
+    # Image - top-K each + histogram inset.
     ax = axes[1]
     shown = np.concatenate([top_pos, top_neg])
     shown_coef = i_coef[shown]

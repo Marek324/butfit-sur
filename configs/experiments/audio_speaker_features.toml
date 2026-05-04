@@ -1,9 +1,9 @@
 # Audio experiment: extend the baseline with speaker-discriminative,
 # augmentation-aware descriptors. Each new feature has a known relationship
 # to one of our augmentations (see docstring of src/audio_features.py):
-#   - Formants F1–F3 (log-Hz medians) — VTL-covariant, gain-invariant
-#   - F2/F1, F3/F1 ratios — VTL-INVARIANT and discriminative
-#   - Spectral centroid (log-Hz mean) — pitch-covariant, EQ-bounded
+#   - Formants F1–F3 (log-Hz medians) - VTL-covariant, gain-invariant
+#   - F2/F1, F3/F1 ratios - VTL-INVARIANT and discriminative
+#   - Spectral centroid (log-Hz mean) - pitch-covariant, EQ-bounded
 
 name = "audio_exp_speaker_features"
 modality = "audio"

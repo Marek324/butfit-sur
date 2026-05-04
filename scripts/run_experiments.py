@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Run multiple training configs and print a side-by-side metrics table.
-
-  uv run scripts/run_experiments.py configs/audio_baseline.toml configs/image_baseline.toml
-
-Skips already-trained runs unless --force is given (presence of metrics.json
-under artifacts/<name>/ counts as 'already trained'). After all runs, reads
-metrics.json sidecars and prints a comparison.
-"""
 
 from __future__ import annotations
 
@@ -24,7 +16,7 @@ from experiments import compare_runs, run_experiment  # noqa: E402
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("configs", nargs="+", type=Path)
     ap.add_argument("--out-root", type=Path, default=Path("artifacts"))
     ap.add_argument(

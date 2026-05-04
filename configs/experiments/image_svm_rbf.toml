@@ -35,5 +35,5 @@ gamma = "scale"
 
 [output]
 result_filename = "image_svm_rbf.txt"
-score = "logit"             # svm decision_function — boundary still at 0
+score = "logit"             # svm decision_function - boundary still at 0
 hard_threshold_logit = 0.0

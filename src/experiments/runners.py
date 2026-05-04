@@ -1,15 +1,3 @@
-"""Modality-dispatching experiment runners.
-
-`run_experiment(cfg, out_dir)` switches on `cfg.modality`:
-  - "audio" / "image" → train per-modality classifier on extracted features
-  - "fusion" → load two pre-trained per-modality artifacts, score paired dev,
-                fit a 2-input fusion logreg
-
-Each run writes `model.pkl`, `train_features.npz`, `metrics.json` under
-`out_dir/`. The metrics sidecar drives `scripts/run_experiments.py` and the
-plotting scripts.
-"""
-
 from __future__ import annotations
 
 import json
@@ -124,7 +112,6 @@ def run_audio_or_image(cfg: Config, out_dir: Path, modality: str) -> dict[str, A
 
 
 def run_fusion(cfg: Config, out_dir: Path) -> dict[str, Any]:
-    """Score-level fusion: requires two pre-trained per-modality artifacts."""
     from classifier import load as load_classifier
     from fusion import fit_fusion, save as save_fusion, score_fusion
 
@@ -210,7 +197,6 @@ def run_experiment(cfg: Config, out_dir: Path) -> dict[str, Any]:
 def score_unlabeled(
     cfg: Config, model: Model, samples: list[Sample], modality: str
 ) -> tuple[np.ndarray, list[str]]:
-    """Score an unlabeled split (eval set)."""
     X, _y, names, _ = extract_set(samples, cfg, modality)
     return score(model, X), names
 

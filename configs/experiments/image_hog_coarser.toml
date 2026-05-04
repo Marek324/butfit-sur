@@ -1,7 +1,7 @@
 # Image experiment: coarser HOG cells (16×16 instead of 8×8) → 576-d
 # instead of 2916-d. Tests whether the lower-capacity feature generalizes
 # better under stress dev (the 2916-d baseline saturates at AUC=1 on clean
-# dev — possibly memorizing too much).
+# dev - possibly memorizing too much).
 
 name = "image_exp_hog_coarser"
 modality = "image"

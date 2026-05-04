@@ -1,5 +1,3 @@
-"""Dev-set metrics: AUC, EER, confusion at the threshold = 0 decision boundary."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -68,10 +66,11 @@ def format_metrics(m: EvalMetrics) -> str:
     tp, fp, fn, tn = m.confusion
     pr = tp / (tp + fp) if (tp + fp) else float("nan")
     rc = tp / (tp + fn) if (tp + fn) else float("nan")
+    f1 = 2 * pr * rc / (pr + rc) if (pr + rc) else float("nan")
     return (
         f"n={m.n} (target={m.n_target}, non-target={m.n_nontarget})\n"
         f"  AUC = {m.auc:.4f}\n"
         f"  EER = {m.eer * 100:.2f}%   (at threshold = {m.eer_threshold:+.3f})\n"
         f"  Confusion @ logit={m.threshold:+.2f}:  TP={tp} FP={fp} FN={fn} TN={tn}\n"
-        f"  Precision = {pr:.3f}   Recall = {rc:.3f}"
+        f"  Precision = {pr:.3f}   Recall = {rc:.3f}   F1 = {f1:.3f}"
     )

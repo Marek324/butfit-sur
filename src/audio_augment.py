@@ -1,15 +1,3 @@
-"""Audio augmentations chosen to be invariant under speaker identity.
-
-Transforms: time stretch (pitch-preserving), gain, polarity, random crop,
-peaking EQ, additive white Gaussian noise at a sampled SNR. None of these
-shifts the expected (log F0, jitter, shimmer, voicing ratio, CMVN-MFCC means)
-feature vector — noise adds variance, not bias, so the model sees a wider
-distribution at test time without being misled about the target.
-
-Pitch shift, reverb, and SpecAugment-style masking are DELIBERATELY NOT
-IMPLEMENTED — they would change speaker-defining features.
-"""
-
 from __future__ import annotations
 
 import librosa
@@ -22,7 +10,6 @@ from config import WaveformAugCfg
 def augment_waveform(
     x: np.ndarray, sr: int, cfg: WaveformAugCfg, rng: np.random.Generator
 ) -> np.ndarray:
-    """Apply one random sample from the waveform-augmentation envelope."""
     x = x.astype(np.float32)
 
     if rng.random() < cfg.polarity_flip_p:
@@ -60,7 +47,6 @@ def augment_waveform(
 def _peaking_eq(
     x: np.ndarray, sr: int, f0_hz: float, gain_db: float, q: float
 ) -> np.ndarray:
-    """RBJ Audio EQ Cookbook peaking biquad."""
     A = 10 ** (gain_db / 40)
     omega = 2 * np.pi * f0_hz / sr
     cos_w = np.cos(omega)

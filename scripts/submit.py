@@ -44,7 +44,7 @@ def collect_src(src_dir: Path) -> list[tuple[Path, str]]:
         if path.suffix in EXCLUDED_SUFFIXES:
             continue
         rel = path.relative_to(src_dir)
-        out.append((path, f"SRC/{rel}"))
+        out.append((path, f"SRC/src/{rel}"))
     return out
 
 
@@ -263,7 +263,7 @@ def main() -> int:
     ap.add_argument("--src", type=Path, default=Path("src"))
     ap.add_argument("--scripts-dir", type=Path, default=Path("scripts"))
     ap.add_argument("--configs-dir", type=Path, default=Path("configs"))
-    ap.add_argument("--out", type=Path, default=Path("submit.zip"))
+    ap.add_argument("--out", type=Path, default=Path("xhricma00_xkomanj00.zip"))
     args = ap.parse_args()
 
     if not args.skip_render and args.docs_md.is_file():
@@ -344,7 +344,7 @@ def main() -> int:
     print(f"Wrote {args.out} ({size_kb:.1f} KB)")
     print(f"  {len(result_files)} result file(s)")
     print(
-        f"  SRC/ with {len(src_entries)} source file(s) "
+        f"  SRC/ with {len(src_entries)} src/ file(s) "
         f"+ {len(script_entries)} script(s) + {len(config_entries)} config(s) "
         f"+ pyproject.toml + requirements.txt"
     )

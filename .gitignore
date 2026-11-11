@@ -1,5 +1,6 @@
 # Claude / editors
 CLAUDE.md
+.claude/
 .cursor/
 .vscode/
 
@@ -18,8 +19,9 @@ __pycache__/
 # Course data (downloadable via scripts/download_dataset.py)
 dataset/
 
-# Submission artifact
-submit.zip
+# Submission artifacts (rebuild with scripts/submit.py)
+/*.zip
+/submit*/
 
 # Trained models / cached features
 artifacts/
@@ -27,3 +29,6 @@ artifacts/
 # VAD comparison outputs (curiosity, not for submission)
 scripts/vad_compare/*.json
 
+
+# Rendered from docs/dokumentace.md by scripts/submit.py
+docs/dokumentace.pdf

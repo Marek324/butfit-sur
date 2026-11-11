@@ -27,7 +27,6 @@ The assignment is in `docs/assignement/`, and the full write-up with results is 
 ## Setup
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12.
-`scripts/submit.py` also needs Pango, which WeasyPrint uses to render the PDF.
 
 ```bash
 uv sync

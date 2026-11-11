@@ -186,6 +186,10 @@ would be the strongest single submission.
 
 # 8. Reproduction
 
+Run from `SRC/` with the course data unpacked into `SRC/dataset/`
+(`target_train`, `non_target_train`, `target_dev`, `non_target_dev`,
+`eval`).
+
 ```bash
 uv run scripts/augment_dataset.py --config configs/augment_audio.toml
 uv run scripts/augment_dataset.py --config configs/augment_image.toml
@@ -195,6 +199,9 @@ uv run scripts/train.py --config configs/fusion.toml
 uv run scripts/evaluate.py --config configs/audio.toml --split eval
 uv run scripts/evaluate.py --config configs/image.toml --split eval
 uv run scripts/evaluate.py --config configs/fusion.toml --split eval
+uv run scripts/augment_dataset.py --config configs/augment_dev_audio.toml
+uv run scripts/augment_dataset.py --config configs/augment_dev_image.toml
+uv run scripts/evaluate.py --config configs/audio_stress.toml --split dev
 uv run scripts/audio_gmm_pipeline.py --mode map_free
 uv run scripts/audio_gmm_hybrid.py
 uv run scripts/fix_vad_empty.py
@@ -202,5 +209,10 @@ uv run scripts/fusion_hybrid_image.py
 uv run scripts/fusion_3way.py
 ```
 
+The three stress-dev steps build the stress dev set and its feature
+cache, which the GMM and fusion scripts score.
+
 All randomness is seeded. Reproduction is deterministic from a fixed
-seed.
+seed. The one exception is the submitted `fusion_logreg.txt`: it was
+scored by a fusion model trained before the VAD fix, so a fresh run
+produces different fusion scores. All other result files reproduce.
